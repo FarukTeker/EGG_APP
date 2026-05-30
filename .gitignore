@@ -15,3 +15,16 @@ DerivedData/
 
 # Swift PM
 .swiftpm/
+
+# Android / Wear OS
+*.iml
+.gradle/
+.idea/
+local.properties
+*.apk
+*.aab
+WearOS/build/
+WearOS/app/build/
+WearOS/captures/
+WearOS/.externalNativeBuild/
+WearOS/.cxx/

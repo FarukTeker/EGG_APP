@@ -1,0 +1,3 @@
+-keep class com.vestel.divise.watch.data.** { *; }
+-keepattributes *Annotation*
+-dontwarn okhttp3.**
