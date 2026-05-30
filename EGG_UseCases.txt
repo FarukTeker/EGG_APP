@@ -1,0 +1,248 @@
+========================================================
+  Vestel Smart Egg Cooker — Companion App
+  Use Case Specification
+  Kaynak: Vestel-Wireframes-standalone-2.html
+  Tarih : 2026-05-30
+========================================================
+
+AKTÖRLER
+---------
+- User          : Uygulamayı kullanan son kullanıcı (iPhone)
+- Device        : Vestel Smart Egg Cooker (Wi-Fi bağlı cihaz)
+- System        : Backend / bildirim servisi / arka plan zamanlayıcısı
+
+UC-01 : Splash & Onboarding
+-------------------------------
+Aktör    : User (ilk kullanım)
+Önkoşul  : Uygulama ilk kez açıldı (hasCompletedOnboarding = false)
+Ana Akış :
+  1. Splash ekranı 2 saniye gösterilir (Vestel logosu, "Smart Egg Cooker").
+  2. Onboarding 1 — "Cook eggs your way" → Devam.
+  3. Onboarding 2 — "Schedule from anywhere" → Devam.
+  4. Onboarding 3 — "Never overcook again" → "Get started".
+  5. Bildirim izin ekranı: Cooking complete / Scheduled cooks (izin iste) veya "Maybe later".
+  6. Auth akışına yönlendirilir.
+Alternatif : Herhangi bir onboarding adımında "Skip" → Auth'a atla.
+Sonkoşul  : hasCompletedOnboarding = true; bildirim tercihi kayıtlı.
+
+UC-02 : Kullanıcı Kaydı (Register)
+--------------------------------------
+Aktör    : User
+Önkoşul  : Hesap yok
+Ana Akış :
+  1. Login ekranında "Register" düğmesine basılır.
+  2. Ad, Soyad, E-posta, Şifre, Şifre Tekrar alanları doldurulur.
+  3. "Continue" → sistem alanları doğrular (e-posta formatı, şifre eşleşme, min 8 karakter).
+  4. Kayıt başarılı → JWT Keychain'e yazılır → kullanıcı authenticated.
+Alternatif : "Already have an account? Log in" → UC-03'e dön.
+Sonkoşul  : Kullanıcı oluşturuldu, oturum açıldı.
+
+UC-03 : Kullanıcı Girişi (Login)
+-----------------------------------
+Aktör    : User
+Önkoşul  : Kayıtlı hesap mevcut
+Ana Akış :
+  1. E-posta + Şifre girilir, "Log In" basılır.
+  2. Doğrulama başarılı → authenticated = true → Ana uygulama (MainTabView).
+Alternatif :
+  A. "Forgot password?" → UC-04.
+  B. Yanlış bilgi → hata mesajı gösterilir.
+Sonkoşul  : Oturum açıldı, token saklandı.
+
+UC-04 : Şifre Sıfırlama (Forgot Password)
+-------------------------------------------
+Aktör    : User
+Önkoşul  : Kayıtlı e-posta
+Ana Akış :
+  1. "Forgot password?" → E-posta giriş ekranı.
+  2. "Send reset link" → Sistem e-posta gönderir.
+  3. "Check your inbox" ekranı — "Open mail app" veya "Resend".
+  4. Kullanıcı linke tıklar → Yeni şifre ekranı (8+ karakter).
+  5. "Update password" → Başarılı → Login ekranına dön.
+Sonkoşul  : Şifre güncellendi.
+
+UC-05 : Cihaz Eşleştirme (Device Pairing)
+-------------------------------------------
+Aktör    : User, Device
+Önkoşul  : Kullanıcı authenticated; cihaz açık ve eşleştirme modunda
+Ana Akış :
+  1. Cihaz tab'ı (boşsa) veya "Add device" → QR tarama ekranı.
+  2. Cihaz üzerindeki QR kodu okutulur / "Enter code manually".
+  3. "Searching" ekranı — cihaz aranıyor.
+  4. "Pairing Found" — cihaz listesi gösterilir (EggMaster Pro, VS-EG-2025 · 2m away).
+  5. Cihaz seçilip "Connect" → "You're connected!" ekranı.
+  6. "Start cooking" → Ana menüye yönlendirilir.
+Alternatif :
+  A. Eşleştirme başarısız → "Couldn't connect" (Wi-Fi kontrol, cihaz butonu 5s basılı).
+     → "Try again" veya "Get help".
+Sonkoşul  : Cihaz cihazlar listesine eklendi, Active durumunda.
+
+UC-06 : Toplu Pişirme Başlatma (Bulk Cook)
+--------------------------------------------
+Aktör    : User, Device
+Önkoşul  : Cihaz eşleştirilmiş ve Online; en az bir yumurta bölmede
+Ana Akış :
+  1. Ana menü → "Bulk" sekmesi aktif.
+  2. Yumurta bölmeleri (A, B, C) seçilir.
+  3. Pişirme derecesi seçilir: Soft / Medium / Hard (tüm bölmeler aynı).
+  4. Zamanlayıcı ring'de süre gösterilir (örn. 5:30 / 3:30 kalan).
+  5. "Start" → CookingActive ekranı; ring animasyonla ilerler.
+Alternatif :
+  A. Yumurta tespit edilmedi → Uyarı banner → "Start anyway".
+  B. Cihaz offline → UC-16 (DeviceOffline).
+Sonkoşul  : Pişirme oturumu başladı; zamanlayıcı çalışıyor.
+
+UC-07 : Ayrı Pişirme Başlatma (Separate Cook)
+-----------------------------------------------
+Aktör    : User, Device
+Önkoşul  : Cihaz eşleştirilmiş ve Online
+Ana Akış :
+  1. Ana menü → "Separate" sekmesine geç.
+  2. Her bölme (A, B, C) için ayrı derece seçilir.
+  3. "Start" → Pişirme başlar; ring en uzun süreyi gösterir.
+Sonkoşul  : Her bölme kendi derecesinde pişirilmekte.
+
+UC-08 : Yumurta Stili Seçimi (Egg Style)
+------------------------------------------
+Aktör    : User
+Önkoşul  : Ana menüde
+Ana Akış :
+  1. "How do you like them?" ekranı → Soft (Runny yolk · 4 min) / Medium (Jammy yolk · 6 min) / Hard (Fully set · 9 min) kartları.
+  2. Kart seçilir → "Continue" → Ana menüde doneness güncellenir.
+Sonkoşul  : Doneness tercihi seçildi.
+
+UC-09 : Preset Kullanma (Mevcut Preset)
+-----------------------------------------
+Aktör    : User
+Önkoşul  : En az bir preset kayıtlı
+Ana Akış :
+  1. Ana menü → "Use a preset" alanı → Dropdown açılır.
+  2. Preset seçilir (Morning Routine, Sunday Brunch, Grandma's Favourite, Kid's Breakfast).
+  3. Bölme ayarları otomatik yüklenir.
+  4. "Set" veya "Start" → Pişirme başlar.
+Sonkoşul  : Preset ayarları uygulandı; oturum başlatıldı.
+
+UC-10 : Preset Programlama (Zamanlanmış Pişirme)
+--------------------------------------------------
+Aktör    : User
+Önkoşul  : Authenticated
+Ana Akış :
+  1. Ana menü → "Select date" → Takvim overlay (Nisan 2025).
+  2. Tarih seçilir → "Select time" → Saat overlay.
+  3. "Use a preset" → Preset dropdown.
+  4. "Set" → Zamanlanmış pişirme kaydedildi.
+Sonkoşul  : Cihaz seçilen zamanda otomatik pişirme başlatır.
+
+UC-11 : Pişirme İzleme & Tamamlama
+------------------------------------
+Aktör    : User, System
+Önkoşul  : Pişirme başlatıldı
+Ana Akış :
+  1. CookingActive ekranı — ring timer animasyonla azalır.
+  2. Sistem bildirim gönderir ("Eggs ready · Kitchen Cooker · just now").
+  3. Timer 0:00 → CookingComplete ekranı ("Your eggs are ready · 3 medium · 1 soft · Cooked for 6 min").
+  4. "Cook again" → Ana menüye dön | "Save as preset" → Preset editor.
+Alternatif :
+  A. "Cancel/Upload" → Pişirme iptal, history'e "Cancelled cook" olarak eklenir.
+  B. Wi-Fi koptu → UC-16 (WifiLost, pişirme cihazda devam eder).
+Sonkoşul  : Pişirme tamamlandı; history'e eklendi.
+
+UC-12 : Preset Oluşturma / Düzenleme
+--------------------------------------
+Aktör    : User
+Önkoşul  : Authenticated
+Ana Akış (Düzenleme):
+  1. Presets tab → Preset seçilir → Edit preset ekranı.
+  2. Ad değiştirilir (örn. "Sunday Brunch") → Bölme tipi ve derece ayarlanır.
+  3. "Save" → Preset güncellendi.
+Ana Akış (Silme):
+  1. Edit preset → "Delete preset" → Modal "Delete 'Sunday Brunch'?" → "Delete".
+  2. Scheduled cooks using it are cancelled.
+Sonkoşul  : Preset kaydedildi/silindi.
+
+UC-13 : Preset Paylaşma
+-------------------------
+Aktör    : User
+Önkoşul  : En az bir preset mevcut
+Ana Akış :
+  1. Edit preset → "Share" → Share preset ekranı.
+  2. QR kodu gösterilir (Code: GRNDM-FAV-9132).
+  3. "Share link" → iOS paylaşım sayfası | "Copy code" → Panoya kopyalanır.
+Sonkoşul  : Preset QR/link ile paylaşıldı.
+
+UC-14 : Pişirme Geçmişi Görüntüleme
+--------------------------------------
+Aktör    : User
+Önkoşul  : En az bir tamamlanmış/iptal edilmiş oturum
+Ana Akış :
+  1. History tab → Liste (Sunday Brunch · 6 eggs · medium · Today 9:41).
+  2. Yeşil nokta = başarılı, kırmızı nokta = iptal.
+  3. "Clear history" → Geçmiş temizlenir.
+Sonkoşul  : Geçmiş görüntülendi/temizlendi.
+
+UC-15 : Cihaz Yönetimi
+------------------------
+Aktör    : User
+Önkoşul  : Authenticated
+Ana Akış :
+  1. Devices tab → Cihaz listesi (Kitchen Cooker · Active, Office Cooker · Idle, Summer House · Offline).
+  2. "+" veya "Add device" → UC-05 (Pairing flow).
+Cihaz durumları: Active (yeşil), Idle (gri), Offline (kırmızı).
+Sonkoşul  : Cihaz listesi yönetildi.
+
+UC-16 : Profil Düzenleme
+--------------------------
+Aktör    : User
+Önkoşul  : Authenticated
+Ana Akış :
+  1. Settings → Profile → Ad / Soyad / E-posta düzenle.
+  2. "Change photo" → Fotoğraf seç.
+  3. "Save" → Profil güncellendi.
+Sonkoşul  : Profil bilgileri kaydedildi.
+
+UC-17 : Bildirim Tercihleri
+-----------------------------
+Aktör    : User
+Önkoşul  : Authenticated
+Togglelar (Cooking): Cook complete, 5 min reminder, Scheduled start.
+Togglelar (Device) : Offline alert, Firmware updates.
+Togglelar (News)   : Tips & recipes, Vestel marketing.
+Sonkoşul  : Tercihler kaydedildi.
+
+UC-18 : Dil Seçimi
+--------------------
+Aktör    : User
+Önkoşul  : Authenticated
+Seçenekler : Türkçe, English (✓), Deutsch, Français, Español, العربية.
+Akış : Seç → "Apply" → Uygulama dili değişir.
+Sonkoşul  : Seçilen dil uygulandı.
+
+UC-19 : Hata Yönetimi — Cihaz Offline
+----------------------------------------
+Aktör    : System
+Önkoşul  : Cihaz bağlantısı kesildi
+Akış : Banner → "Cooker is offline" ekranı → Wi-Fi bilgisi → "Reconnect" / "Switch device".
+
+UC-20 : Hata Yönetimi — Wi-Fi Pişirme Esnasında Kesildi
+---------------------------------------------------------
+Aktör    : System
+Önkoşul  : Aktif pişirme oturumu, Wi-Fi bağlantısı kesildi
+Akış : Uyarı banner ("Connection lost · Cook continues on the device") → Ring timer duraksız devam eder → "Try to reconnect".
+
+UC-21 : Hata Yönetimi — Yumurta Tespit Edilemedi
+--------------------------------------------------
+Aktör    : System
+Önkoşul  : Kullanıcı pişirmeyi başlatmaya çalıştı
+Akış : "No eggs detected" banner → Boş EggGrid → "Start anyway" (override) seçeneği.
+
+UC-22 : Hata Yönetimi — Su Deposu Boş
+---------------------------------------
+Aktör    : System
+Önkoşul  : Pişirme başlatılmak isteniyor
+Akış : "Refill water tank" → "Your cooker needs at least 100ml of water." → "Retry".
+
+========================================================
+  Toplam Use Case : 22
+  Ekran sayısı    : 40 (8 bölüm)
+  Kaynak          : Vestel-Wireframes-standalone-2.html
+========================================================

@@ -1,0 +1,17 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+.build/
+
+# SQLite DB
+*.db
+*.db-shm
+*.db-wal
+
+# macOS
+.DS_Store
+
+# Swift PM
+.swiftpm/
