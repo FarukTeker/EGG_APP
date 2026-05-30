@@ -6,7 +6,9 @@ import JWT
 public func configure(_ app: Application) async throws {
 
     // MARK: - Database (SQLite for dev, swap to Postgres for prod)
-    app.databases.use(.sqlite(.file("vestel_egg.db")), as: .sqlite)
+    // Absolute path so the DB is always next to the binary regardless of cwd
+    let dbPath = app.directory.workingDirectory + "vestel_egg.db"
+    app.databases.use(.sqlite(.file(dbPath)), as: .sqlite)
 
     // MARK: - JWT
     app.jwt.signers.use(.hs256(key: Environment.get("JWT_SECRET") ?? "vestel-egg-secret-dev-2026"))
