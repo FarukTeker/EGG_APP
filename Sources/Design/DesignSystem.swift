@@ -173,9 +173,11 @@ struct VSeg: View {
 }
 
 struct VTopbar: View {
+    @EnvironmentObject private var store: AppStore
     var showAvatar: Bool = true
     var showBack: Bool = false
     var onBack: (() -> Void)? = nil
+    @State private var showProfile = false
 
     var body: some View {
         HStack {
@@ -186,24 +188,25 @@ struct VTopbar: View {
                         .frame(width: 32, height: 32)
                 }
             } else if showAvatar {
-                Circle()
-                    .fill(Color.bgSurface2)
-                    .frame(width: 32, height: 32)
-                    .overlay(
-                        Image(systemName: "person")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.fg2)
-                    )
+                Button { showProfile = true } label: {
+                    Circle()
+                        .fill(Color.bgSurface2)
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Image(systemName: "person")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.fg2)
+                        )
+                }
             } else {
                 Spacer().frame(width: 32)
             }
             Spacer()
-            Image(systemName: "scale.3d")
-                .foregroundStyle(Color.fg2)
-                .frame(width: 32, height: 32)
+            VWaterButton()
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)
+        .sheet(isPresented: $showProfile) { EditProfileView() }
     }
 }
 
@@ -242,34 +245,71 @@ struct VNavHeader: View {
     }
 }
 
+// MARK: - Ring Phase Descriptor
+
+struct RingPhase: Identifiable {
+    let id = UUID()
+    let startFraction: Double   // 0..1
+    let endFraction: Double     // 0..1
+    let color: Color
+}
+
 // MARK: - Ring Timer Component
+// progress: 0..1 (0 = idle, 1 = complete)
+// phases: empty → single accentOrange arc; populated → colored segments per cook level
 
 struct VRing: View {
     let big: String
     let sub: String
     var progress: Double = 0
+    var phases: [RingPhase] = []
 
     private let radius: CGFloat = 60
-    private var circumference: CGFloat { 2 * .pi * radius }
 
     var body: some View {
         ZStack {
+            // Background track
             Circle()
                 .stroke(Color.bgSurface2, lineWidth: 8)
                 .frame(width: radius * 2, height: radius * 2)
 
-            Circle()
-                .trim(from: 0, to: progress / 100)
-                .stroke(Color.accentOrange, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                .frame(width: radius * 2, height: radius * 2)
-                .rotationEffect(.degrees(-90))
-
-            // Red dot at tip
-            Circle()
-                .fill(Color.brandRed)
-                .frame(width: 8, height: 8)
-                .offset(y: -radius)
-                .rotationEffect(.degrees(-90 + progress / 100 * 360))
+            if phases.isEmpty {
+                // Idle or fallback: plain arc, no dot
+                if progress > 0 {
+                    Circle()
+                        .trim(from: 0, to: progress)
+                        .stroke(Color.accentOrange, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .frame(width: radius * 2, height: radius * 2)
+                        .rotationEffect(.degrees(-90))
+                }
+            } else {
+                // Ghost arcs: full extent of each phase at low opacity (progress preview)
+                ForEach(phases) { phase in
+                    Circle()
+                        .trim(from: phase.startFraction, to: phase.endFraction)
+                        .stroke(phase.color.opacity(0.18), style: StrokeStyle(lineWidth: 8, lineCap: .butt))
+                        .frame(width: radius * 2, height: radius * 2)
+                        .rotationEffect(.degrees(-90))
+                }
+                // Active fills: filled portion at full opacity
+                ForEach(phases) { phase in
+                    if phase.startFraction < progress {
+                        Circle()
+                            .trim(from: phase.startFraction, to: min(progress, phase.endFraction))
+                            .stroke(phase.color, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .frame(width: radius * 2, height: radius * 2)
+                            .rotationEffect(.degrees(-90))
+                    }
+                }
+                // Tip dot tracks arc end — only visible when cooking
+                if progress > 0 {
+                    Circle()
+                        .fill(dotColor)
+                        .frame(width: 8, height: 8)
+                        .offset(y: -radius)
+                        .rotationEffect(.degrees(progress * 360))
+                }
+            }
 
             VStack(spacing: 2) {
                 Text(big)
@@ -282,26 +322,36 @@ struct VRing: View {
         }
         .frame(width: radius * 2 + 20, height: radius * 2 + 20)
     }
+
+    private var dotColor: Color {
+        phases.last(where: { $0.startFraction < progress })?.color ?? Color.accentOrange
+    }
 }
 
 // MARK: - Egg Grid Component
+// Egg indices: section 0 (A) = eggs 0,1 · section 1 (B) = eggs 2,3 · section 2 (C) = eggs 4,5
 
 struct VEggGrid: View {
     @Binding var selected: Set<Int>
     var interactive: Bool = true
+    var completedSections: Set<Int> = []
 
     let sections = ["A", "B", "C"]
 
     var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
-                ForEach(0..<3) { i in
-                    EggSlot(index: i, isSelected: selected.contains(i), interactive: interactive) {
-                        if interactive {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                if selected.contains(i) { selected.remove(i) }
-                                else { selected.insert(i) }
-                            }
+                ForEach(0..<3) { sectionIdx in
+                    EggSlot(
+                        topSelected: selected.contains(sectionIdx * 2),
+                        bottomSelected: selected.contains(sectionIdx * 2 + 1),
+                        isCompleted: completedSections.contains(sectionIdx),
+                        interactive: interactive
+                    ) { offset in
+                        let eggIdx = sectionIdx * 2 + offset
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            if selected.contains(eggIdx) { selected.remove(eggIdx) }
+                            else { selected.insert(eggIdx) }
                         }
                     }
                 }
@@ -310,7 +360,7 @@ struct VEggGrid: View {
                 ForEach(0..<3) { i in
                     Text(sections[i])
                         .font(.vestelCaption)
-                        .foregroundStyle(Color.fg3)
+                        .foregroundStyle(completedSections.contains(i) ? Color.success : Color.fg3)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -320,32 +370,67 @@ struct VEggGrid: View {
 }
 
 private struct EggSlot: View {
-    let index: Int
-    let isSelected: Bool
+    let topSelected: Bool
+    let bottomSelected: Bool
+    let isCompleted: Bool
     let interactive: Bool
-    let onTap: () -> Void
+    let onTap: (Int) -> Void
+
+    private var sectionActive: Bool { topSelected || bottomSelected }
 
     var body: some View {
-        VStack(spacing: 6) {
-            ForEach(0..<2) { _ in
-                Ellipse()
-                    .fill(isSelected ? Color.accentOrange.opacity(0.25) : Color.bgSurface2)
-                    .overlay(
-                        Ellipse()
-                            .stroke(isSelected ? Color.accentOrange : Color.bgSurface3, lineWidth: 1.5)
-                    )
-                    .frame(width: 36, height: 48)
+        ZStack(alignment: .topTrailing) {
+            VStack(spacing: 6) {
+                EggOval(isSelected: topSelected, isCompleted: isCompleted)
+                    .onTapGesture { if interactive { onTap(0) } }
+                EggOval(isSelected: bottomSelected, isCompleted: isCompleted)
+                    .onTapGesture { if interactive { onTap(1) } }
+            }
+            .padding(8)
+            .background(
+                isCompleted ? Color.success.opacity(0.10) :
+                sectionActive ? Color.bgSurface1 : Color.clear
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        isCompleted ? Color.success :
+                        sectionActive ? Color.accentOrange : Color.line1,
+                        lineWidth: 1.5)
+            )
+            .frame(maxWidth: .infinity)
+
+            if isCompleted {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.success)
+                    .background(Color.bgApp, in: Circle())
+                    .offset(x: 4, y: -4)
+                    .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(8)
-        .background(isSelected ? Color.bgSurface1 : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isSelected ? Color.accentOrange : Color.line1, lineWidth: 1.5)
-        )
-        .frame(maxWidth: .infinity)
-        .onTapGesture(perform: onTap)
+        .animation(.easeInOut(duration: 0.25), value: isCompleted)
+    }
+}
+
+private struct EggOval: View {
+    let isSelected: Bool
+    var isCompleted: Bool = false
+    var body: some View {
+        Ellipse()
+            .fill(
+                isCompleted   ? Color.success.opacity(0.20) :
+                isSelected    ? Color.accentOrange.opacity(0.25) : Color.bgSurface2
+            )
+            .overlay(
+                Ellipse()
+                    .stroke(
+                        isCompleted  ? Color.success.opacity(0.7) :
+                        isSelected   ? Color.accentOrange : Color.bgSurface3,
+                        lineWidth: 1.5)
+            )
+            .frame(width: 36, height: 48)
     }
 }
 
@@ -380,31 +465,53 @@ struct VDonenessBulk: View {
 
 struct VDonenessSeparate: View {
     @Binding var levels: [String]
+    var selectedEggs: Set<Int> = [0, 1, 2, 3, 4, 5]
+    var completedSections: Set<Int> = []
     var caption: String = "Per block · own level"
     let sections = ["A", "B", "C"]
     let options = ["Soft", "Medium", "Hard"]
 
+    private func sectionHasEgg(_ i: Int) -> Bool {
+        selectedEggs.contains(i * 2) || selectedEggs.contains(i * 2 + 1)
+    }
+
     var body: some View {
+        let activeSections = (0..<3).filter { sectionHasEgg($0) }
         VStack(spacing: 8) {
             Text(caption).font(.vestelCaption).foregroundStyle(Color.fg3)
             HStack(spacing: 8) {
-                ForEach(0..<3) { i in
+                ForEach(activeSections, id: \.self) { i in
+                    let done = completedSections.contains(i)
                     Menu {
                         ForEach(options, id: \.self) { opt in
                             Button(opt) { levels[i] = opt }
                         }
                     } label: {
                         VStack(spacing: 4) {
-                            Text("Section \(sections[i])").font(.vestelCaption).foregroundStyle(Color.fg3)
+                            HStack(spacing: 3) {
+                                Text("Section \(sections[i])")
+                                    .font(.vestelCaption)
+                                    .foregroundStyle(done ? Color.success : Color.fg3)
+                                if done {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(Color.success)
+                                }
+                            }
                             Text(levels[i].isEmpty ? "—" : levels[i])
                                 .font(.vestelLabel)
-                                .foregroundStyle(Color.fg1)
+                                .foregroundStyle(done ? Color.success : Color.fg1)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(Color.bgSurface1)
+                        .background(done ? Color.success.opacity(0.10) : Color.bgSurface1)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(done ? Color.success.opacity(0.4) : Color.clear, lineWidth: 1)
+                        )
                     }
+                    .animation(.easeInOut(duration: 0.25), value: done)
                 }
             }
         }
@@ -440,32 +547,41 @@ struct VListRow: View {
     }
 
     var body: some View {
-        Button {
-            onTap?()
-        } label: {
-            HStack {
-                Text(label).font(.vestelBody).foregroundStyle(Color.fg1)
-                Spacer()
-                if isToggle {
+        VStack(spacing: 0) {
+            if isToggle {
+                // Plain HStack — no Button wrapper so Toggle receives touch events directly
+                HStack {
+                    Text(label).font(.vestelBody).foregroundStyle(Color.fg1)
+                    Spacer()
                     Toggle("", isOn: $toggleValue)
                         .tint(.brandRed)
                         .labelsHidden()
-                } else {
-                    if let v = value {
-                        Text(v).font(.vestelBody).foregroundStyle(Color.fg2)
-                    }
-                    if showChev {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.fg3)
-                    }
                 }
+                .padding(.vertical, 14)
+                .padding(.horizontal, 2)
+            } else {
+                Button {
+                    onTap?()
+                } label: {
+                    HStack {
+                        Text(label).font(.vestelBody).foregroundStyle(Color.fg1)
+                        Spacer()
+                        if let v = value {
+                            Text(v).font(.vestelBody).foregroundStyle(Color.fg2)
+                        }
+                        if showChev {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.fg3)
+                        }
+                    }
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 2)
+                }
+                .disabled(onTap == nil)
             }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 2)
+            Divider().background(Color.line1)
         }
-        .disabled(isToggle || onTap == nil)
-        Divider().background(Color.line1)
     }
 }
 
@@ -621,5 +737,132 @@ struct VPresetPill: View {
                         .stroke(isGhost ? Color.line2 : Color.line1, lineWidth: 1)
                 )
         }
+    }
+}
+
+// MARK: - Water Level Indicator
+
+struct VWaterButton: View {
+    @EnvironmentObject private var store: AppStore
+    @State private var showDetail = false
+
+    var body: some View {
+        Button { showDetail = true } label: {
+            ZStack {
+                // Faint full-drop background
+                Image(systemName: "drop.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(waterColor.opacity(0.2))
+                // Fill mask from bottom
+                Image(systemName: "drop.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(waterColor)
+                    .mask(
+                        GeometryReader { geo in
+                            VStack(spacing: 0) {
+                                Color.clear
+                                    .frame(height: geo.size.height * (1 - store.waterLevel))
+                                Color.black
+                                    .frame(height: geo.size.height * store.waterLevel)
+                            }
+                        }
+                    )
+            }
+            .frame(width: 32, height: 32)
+        }
+        .sheet(isPresented: $showDetail) { WaterDetailSheet() }
+    }
+
+    private var waterColor: Color {
+        if store.waterLevel < 0.15 { return .brandRed }
+        if store.waterLevel < 0.30 { return .warning }
+        return .info
+    }
+}
+
+private struct WaterDetailSheet: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.bgApp.ignoresSafeArea()
+            VStack(spacing: 0) {
+                VNavHeader(title: "Water Tank") { dismiss() }
+
+                Spacer()
+
+                // Visual tank
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.line2, lineWidth: 2)
+                        .frame(width: 90, height: 180)
+                    RoundedRectangle(cornerRadius: 17)
+                        .fill(waterColor.opacity(0.30))
+                        .frame(width: 82, height: max(10, 168 * store.waterLevel))
+                        .animation(.easeInOut(duration: 0.5), value: store.waterLevel)
+                    Image(systemName: "drop.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(waterColor.opacity(0.7))
+                        .padding(.bottom, 14)
+                }
+
+                Text("\(Int(store.waterLevel * 100))%")
+                    .font(.vestelDisplay)
+                    .foregroundStyle(Color.fg1)
+                    .padding(.top, 28)
+
+                Text(statusLabel)
+                    .font(.vestelH3)
+                    .foregroundStyle(waterColor)
+                    .padding(.top, 6)
+
+                Text(capacityHint)
+                    .font(.vestelCaption)
+                    .foregroundStyle(Color.fg3)
+                    .padding(.top, 4)
+
+                if store.waterLevel < 0.30 {
+                    VBanner(
+                        message: store.waterLevel < 0.15 ? "Refill now" : "Refill soon",
+                        detail: cookWarning,
+                        tone: .warning)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
+                }
+
+                Spacer()
+
+                VBtn(title: "Done") { dismiss() }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+            }
+        }
+    }
+
+    private var waterColor: Color {
+        if store.waterLevel < 0.15 { return .brandRed }
+        if store.waterLevel < 0.30 { return .warning }
+        return .info
+    }
+
+    private var statusLabel: String {
+        if store.waterLevel < 0.15 { return "Critical" }
+        if store.waterLevel < 0.30 { return "Low" }
+        if store.waterLevel < 0.60 { return "Moderate" }
+        return "Good"
+    }
+
+    private var capacityHint: String {
+        if store.waterLevel < 0.15 { return "Cannot complete most programs" }
+        if store.waterLevel < 0.22 { return "Enough for Soft programs only" }
+        if store.waterLevel < 0.33 { return "Enough for Soft & Medium programs" }
+        return "Sufficient for all programs"
+    }
+
+    private var cookWarning: String {
+        if store.waterLevel < 0.15 { return "Water level is too low to complete any cook program. Please refill." }
+        if store.waterLevel < 0.22 { return "Only Soft (4 min) programs can be completed safely." }
+        return "Hard (9 min) programs may not complete. Refill recommended."
     }
 }

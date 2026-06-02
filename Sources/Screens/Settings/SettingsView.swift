@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 // MARK: - UC-13, UC-16, UC-17, UC-18: Settings
 
@@ -7,7 +8,7 @@ struct SettingsTabView: View {
     @State private var route: SettingsRoute? = nil
 
     enum SettingsRoute: Hashable {
-        case profile, changePassword, notifications, language, help
+        case profile, changePassword, devices, defaultStyle, notifications, language, help
     }
 
     var body: some View {
@@ -29,9 +30,9 @@ struct SettingsTabView: View {
                             .font(.vestelCaption).foregroundStyle(Color.fg3)
                             .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 8)
 
-                        VListRow(label: "Devices", value: "\(store.devices.count)", showChev: true) { }
-                        VListRow(label: "Default style", value: store.donenessLevels[0], showChev: true) { }
-                        VListRow(label: "Auto-detect eggs", toggle: $store.notificationsGranted)
+                        VListRow(label: "Devices", value: "\(store.devices.count)", showChev: true) { route = .devices }
+                        VListRow(label: "Default style", value: store.defaultStyle, showChev: true) { route = .defaultStyle }
+                        VListRow(label: "Auto-detect eggs", toggle: $store.autoDetectEggs)
 
                         // App section
                         Text("App")
@@ -43,9 +44,7 @@ struct SettingsTabView: View {
                         VListRow(label: "Help", showChev: true) { route = .help }
 
                         // Sign out
-                        Button {
-                            store.logout()
-                        } label: {
+                        Button { store.logout() } label: {
                             Text("Sign Out")
                                 .font(.vestelButton)
                                 .foregroundStyle(Color.brandRed)
@@ -69,6 +68,8 @@ struct SettingsTabView: View {
                 switch r {
                 case .profile:        EditProfileView()
                 case .changePassword: ChangePasswordView()
+                case .devices:        DevicesManagementView()
+                case .defaultStyle:   DefaultStyleView()
                 case .notifications:  NotificationSettingsView()
                 case .language:       LanguageView()
                 case .help:           HelpView()
@@ -86,6 +87,8 @@ struct EditProfileView: View {
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var email = ""
+    @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var avatarImage: Image? = nil
 
     var body: some View {
         ZStack {
@@ -93,16 +96,45 @@ struct EditProfileView: View {
             VStack(spacing: 0) {
                 VNavHeader(title: "Profile") { dismiss() }
 
-                VStack(spacing: 16) {
-                    Circle()
-                        .fill(Color.bgSurface2)
-                        .frame(width: 64, height: 64)
-                        .overlay(Image(systemName: "person").font(.system(size: 28)).foregroundStyle(Color.fg2))
-                        .padding(.top, 24)
-
-                    Button { } label: {
-                        Text("Change photo").font(.vestelLabel).foregroundStyle(Color.accentOrange)
+                VStack(spacing: 12) {
+                    // Avatar — tapping opens the photo picker
+                    PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.bgSurface2)
+                                .frame(width: 80, height: 80)
+                            if let img = avatarImage {
+                                img
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 80, height: 80)
+                                    .clipShape(Circle())
+                            } else {
+                                Image(systemName: "person")
+                                    .font(.system(size: 32))
+                                    .foregroundStyle(Color.fg2)
+                            }
+                            // Camera badge
+                            Circle()
+                                .fill(Color.accentOrange)
+                                .frame(width: 26, height: 26)
+                                .overlay(Image(systemName: "camera.fill").font(.system(size: 12)).foregroundStyle(.white))
+                                .offset(x: 28, y: 28)
+                        }
                     }
+                    .padding(.top, 24)
+                    .onChange(of: selectedPhoto) { _, newItem in
+                        Task {
+                            if let data = try? await newItem?.loadTransferable(type: Data.self),
+                               let uiImg = UIImage(data: data) {
+                                avatarImage = Image(uiImage: uiImg)
+                            }
+                        }
+                    }
+
+                    Text("Change photo")
+                        .font(.vestelLabel)
+                        .foregroundStyle(Color.accentOrange)
                 }
 
                 VStack(spacing: 12) {
@@ -263,6 +295,134 @@ struct HelpView: View {
             }
         }
         .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Default Style Picker
+
+struct DefaultStyleView: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+
+    let options = ["Soft", "Medium", "Hard"]
+    let descriptions = ["Runny yolk · 4 min", "Jammy yolk · 6 min", "Fully set · 9 min"]
+
+    var body: some View {
+        ZStack {
+            Color.bgApp.ignoresSafeArea()
+            VStack(spacing: 0) {
+                VNavHeader(title: "Default Style") { dismiss() }
+                Text("Applied when you start a new cook without adjusting levels.")
+                    .font(.vestelCaption)
+                    .foregroundStyle(Color.fg3)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
+
+                VStack(spacing: 10) {
+                    ForEach(Array(zip(options, descriptions)), id: \.0) { option, desc in
+                        let selected = store.defaultStyle == option
+                        Button {
+                            store.defaultStyle = option
+                        } label: {
+                            HStack(spacing: 14) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(option).font(.vestelH3).foregroundStyle(Color.fg1)
+                                    Text(desc).font(.vestelCaption).foregroundStyle(Color.fg2)
+                                }
+                                Spacer()
+                                if selected {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Color.brandRed)
+                                }
+                            }
+                            .padding(16)
+                            .background(selected ? Color.brandRedSoft : Color.bgSurface1)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(selected ? Color.brandRed : Color.clear, lineWidth: 1.5)
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+
+                Spacer()
+
+                VBtn(title: "Save") {
+                    store.donenessLevels = [store.defaultStyle, store.defaultStyle, store.defaultStyle]
+                    dismiss()
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Devices Management (Settings nav version)
+
+struct DevicesManagementView: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var showPairing = false
+
+    var body: some View {
+        ZStack {
+            Color.bgApp.ignoresSafeArea()
+            VStack(spacing: 0) {
+                VNavHeader(title: "Devices",
+                           onBack: { dismiss() },
+                           trailingIcon: "plus",
+                           onTrailing: { showPairing = true })
+
+                if store.devices.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "wifi.slash").font(.system(size: 48)).foregroundStyle(Color.fg3)
+                        Text("No devices").font(.vestelH3).foregroundStyle(Color.fg1)
+                        Text("Pair your egg cooker to get started.")
+                            .font(.vestelCaption).foregroundStyle(Color.fg2)
+                            .multilineTextAlignment(.center).padding(.horizontal, 40)
+                    }
+                    Spacer()
+                    VBtn(title: "Add device") { showPairing = true }
+                        .padding(.horizontal, 24).padding(.bottom, 40)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(store.devices) { device in
+                                Button { store.setActiveDevice(device) } label: {
+                                    HStack {
+                                        VDeviceRow(
+                                            name: device.name,
+                                            subtitle: "\(device.modelCode) · \(device.state.displayText)",
+                                            state: device.state.viewState)
+                                        Spacer()
+                                        if store.activeDevice?.id == device.id {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(Color.brandRed)
+                                        }
+                                    }
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 12)
+                                }
+                                Divider().background(Color.line1).padding(.horizontal, 24)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                }
+            }
+        }
+        .navigationBarHidden(true)
+        .sheet(isPresented: $showPairing) {
+            PairingFlowView(onComplete: { showPairing = false },
+                            onCancel:  { showPairing = false })
+        }
     }
 }
 

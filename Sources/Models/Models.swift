@@ -30,13 +30,13 @@ struct CookSession: Identifiable, Codable {
     var id: UUID = UUID()
     var presetName: String?
     var mode: CookMode
-    var selectedSections: [Int]
+    var selectedEggs: [Int]
     var donenessLevels: [String]
     var startedAt: Date
     var completedAt: Date?
     var cancelled: Bool = false
 
-    var eggCount: Int { selectedSections.count * 2 }
+    var eggCount: Int { selectedEggs.count }
     var displayTitle: String { presetName ?? "Quick boil" }
 
     var historyDetail: String {
@@ -72,13 +72,13 @@ struct EggPreset: Identifiable, Codable, Equatable {
     var id: UUID = UUID()
     var name: String
     var mode: CookMode
-    var selectedSections: [Int]
+    var selectedEggs: [Int]
     var donenessLevels: [String]
 
     var summaryText: String {
-        donenessLevels.enumerated().map { i, d in
-            "Section \(["A","B","C"][i]) · \(d)"
-        }.joined(separator: " · ")
+        let labels = ["A", "B", "C"]
+        let active = (0..<3).filter { selectedEggs.contains($0 * 2) || selectedEggs.contains($0 * 2 + 1) }
+        return active.map { "Section \(labels[$0]) · \(donenessLevels[$0])" }.joined(separator: " · ")
     }
 }
 
@@ -87,7 +87,30 @@ struct EggPreset: Identifiable, Codable, Equatable {
 struct ScheduledCook: Identifiable, Codable {
     var id: UUID = UUID()
     var preset: EggPreset
-    var date: Date
+    var scheduleType: ScheduleType = .oneTime
+    var fireTime: Date                  // time-of-day component
+    var oneTimeDate: Date? = nil        // date component for one-time
+    var weekdays: [Int] = []            // 1=Sun 2=Mon 3=Tue 4=Wed 5=Thu 6=Fri 7=Sat
+    var isEnabled: Bool = true
+
+    enum ScheduleType: String, Codable, CaseIterable {
+        case oneTime = "One time"
+        case weekly  = "Every week"
+    }
+
+    var summaryLine: String {
+        let t = fireTime.formatted(.dateTime.hour().minute())
+        switch scheduleType {
+        case .oneTime:
+            let d = oneTimeDate?.formatted(.dateTime.day().month(.abbreviated)) ?? "—"
+            return "\(d) · \(t)"
+        case .weekly:
+            let order:  [Int]         = [2,3,4,5,6,7,1]
+            let labels: [Int: String] = [2:"Mo",3:"Tu",4:"We",5:"Th",6:"Fr",7:"Sa",1:"Su"]
+            let days = order.filter { weekdays.contains($0) }.compactMap { labels[$0] }.joined(separator: " ")
+            return days.isEmpty ? "· \(t)" : "\(days) · \(t)"
+        }
+    }
 }
 
 // MARK: - History Entry

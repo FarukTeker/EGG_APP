@@ -102,7 +102,7 @@ struct EmptyDevicesView: View {
 
 // MARK: - Helpers
 
-private extension DeviceConnectionState {
+extension DeviceConnectionState {
     var viewState: VDeviceRow.DeviceState {
         switch self { case .active: return .active; case .idle: return .idle; case .offline: return .offline }
     }

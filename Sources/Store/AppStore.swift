@@ -14,6 +14,8 @@ final class AppStore: ObservableObject {
     @Published var notificationPrefs = NotificationPrefs()
     @Published var language: AppLanguage = .english
     @Published var notificationsGranted: Bool = false
+    @Published var autoDetectEggs: Bool = true
+    @Published var defaultStyle: String = "Medium"
 
     // MARK: - Devices (UC-05, UC-15)
     @Published var devices: [EggDevice] = []
@@ -21,8 +23,9 @@ final class AppStore: ObservableObject {
 
     // MARK: - Cooking (UC-06..UC-11)
     @Published var cookMode: CookMode = .bulk
-    @Published var selectedSections: Set<Int> = [0, 1, 2]
+    @Published var selectedEggs: Set<Int> = [0, 1, 2, 3, 4, 5]
     @Published var donenessLevels: [String] = ["Medium", "Medium", "Medium"]
+    @Published var waterLevel: Double = 0.72   // 0..1 — tank fill fraction
     @Published var cookingState: CookingState = .idle
     private var cookTimer: Timer?
     private var remainingSeconds: Int = 0
@@ -30,6 +33,9 @@ final class AppStore: ObservableObject {
 
     // MARK: - Presets (UC-09, UC-12, UC-13)
     @Published var presets: [EggPreset] = []
+
+    // MARK: - Scheduled Cooks
+    @Published var scheduledCooks: [ScheduledCook] = []
 
     // MARK: - History (UC-14)
     @Published var history: [HistoryEntry] = []
@@ -76,7 +82,7 @@ final class AppStore: ObservableObject {
 
     func startCook(presetName: String? = nil) {
         guard activeDevice != nil else { cookingState = .deviceOffline; return }
-        guard !selectedSections.isEmpty else { cookingState = .noEggsDetected; return }
+        guard !selectedEggs.isEmpty else { cookingState = .noEggsDetected; return }
 
         let baseSeconds = donenessSeconds()
         totalSeconds = baseSeconds
@@ -96,7 +102,7 @@ final class AppStore: ObservableObject {
 
         let session = CookSession(
             mode: cookMode,
-            selectedSections: Array(selectedSections).sorted(),
+            selectedEggs: Array(selectedEggs).sorted(),
             donenessLevels: donenessLevels,
             startedAt: Date().addingTimeInterval(-Double(totalSeconds - remainingSeconds)),
             cancelled: true
@@ -115,7 +121,7 @@ final class AppStore: ObservableObject {
         let preset = EggPreset(
             name: name,
             mode: cookMode,
-            selectedSections: Array(selectedSections).sorted(),
+            selectedEggs: Array(selectedEggs).sorted(),
             donenessLevels: donenessLevels
         )
         presets.insert(preset, at: 0)
@@ -128,7 +134,7 @@ final class AppStore: ObservableObject {
             cookTimer = nil
             let session = CookSession(
                 mode: cookMode,
-                selectedSections: Array(selectedSections).sorted(),
+                selectedEggs: Array(selectedEggs).sorted(),
                 donenessLevels: donenessLevels,
                 startedAt: Date().addingTimeInterval(-Double(totalSeconds)),
                 completedAt: Date()
@@ -144,8 +150,9 @@ final class AppStore: ObservableObject {
     }
 
     private func donenessSeconds() -> Int {
-        let levels = cookMode == .bulk ? [donenessLevels[0]] : donenessLevels.filter { !$0.isEmpty }
-        let maxLevel = levels.max { a, b in donenessOrder(a) < donenessOrder(b) } ?? "Medium"
+        let activeSections = (0..<3).filter { selectedEggs.contains($0 * 2) || selectedEggs.contains($0 * 2 + 1) }
+        let levels = cookMode == .bulk ? [donenessLevels[0]] : activeSections.map { donenessLevels[$0] }
+        let maxLevel = levels.max { donenessOrder($0) < donenessOrder($1) } ?? "Medium"
         switch maxLevel {
         case "Soft":   return 4 * 60
         case "Medium": return 6 * 60
@@ -158,11 +165,21 @@ final class AppStore: ObservableObject {
         switch level { case "Soft": return 1; case "Medium": return 2; case "Hard": return 3; default: return 0 }
     }
 
+    // MARK: - Scheduled Cooks
+
+    func addSchedule(_ s: ScheduledCook) { scheduledCooks.insert(s, at: 0) }
+
+    func updateSchedule(_ s: ScheduledCook) {
+        if let i = scheduledCooks.firstIndex(where: { $0.id == s.id }) { scheduledCooks[i] = s }
+    }
+
+    func deleteSchedule(_ s: ScheduledCook) { scheduledCooks.removeAll { $0.id == s.id } }
+
     // MARK: - Presets (UC-09, UC-12, UC-13)
 
     func applyPreset(_ preset: EggPreset) {
         cookMode = preset.mode
-        selectedSections = Set(preset.selectedSections)
+        selectedEggs = Set(preset.selectedEggs)
         donenessLevels = preset.donenessLevels
     }
 
@@ -190,22 +207,32 @@ final class AppStore: ObservableObject {
         activeDevice = devices.first
 
         presets = [
-            EggPreset(name: "Morning Routine",    mode: .separate, selectedSections: [0,1], donenessLevels: ["Soft","Medium","Hard"]),
-            EggPreset(name: "Sunday Brunch",      mode: .bulk,     selectedSections: [0,1,2], donenessLevels: ["Medium","Medium","Medium"]),
-            EggPreset(name: "Grandma's Favourite", mode: .separate, selectedSections: [0,1,2], donenessLevels: ["Soft","Medium","Hard"]),
-            EggPreset(name: "Kid's Breakfast",    mode: .bulk,     selectedSections: [0,1], donenessLevels: ["Soft","Soft","Soft"])
+            EggPreset(name: "Morning Routine",     mode: .separate, selectedEggs: [0,1,2,3],     donenessLevels: ["Soft","Medium","Hard"]),
+            EggPreset(name: "Sunday Brunch",       mode: .bulk,     selectedEggs: [0,1,2,3,4,5], donenessLevels: ["Medium","Medium","Medium"]),
+            EggPreset(name: "Grandma's Favourite", mode: .separate, selectedEggs: [0,1,2,3,4,5], donenessLevels: ["Soft","Medium","Hard"]),
+            EggPreset(name: "Kid's Breakfast",     mode: .bulk,     selectedEggs: [0,1,2,3],     donenessLevels: ["Soft","Soft","Soft"])
         ]
 
         let base = Date()
         func d(_ offset: Int) -> Date { Calendar.current.date(byAdding: .day, value: offset, to: base)! }
 
         history = [
-            HistoryEntry(session: CookSession(presetName: "Sunday Brunch",      mode: .bulk,     selectedSections:[0,1,2], donenessLevels:["Medium","Medium","Medium"], startedAt: d(0)),  deviceName: "Kitchen Cooker"),
-            HistoryEntry(session: CookSession(presetName: "Quick boil",          mode: .bulk,     selectedSections:[0],     donenessLevels:["Soft","",""],               startedAt: d(-1)), deviceName: "Kitchen Cooker"),
-            HistoryEntry(session: CookSession(presetName: "Cancelled cook",      mode: .bulk,     selectedSections:[1],     donenessLevels:["Medium","",""],             startedAt: d(-2), cancelled: true), deviceName: "Kitchen Cooker"),
-            HistoryEntry(session: CookSession(presetName: "Grandma's Favourite", mode: .separate, selectedSections:[0,1,2], donenessLevels:["Soft","Medium","Hard"],    startedAt: d(-3)), deviceName: "Kitchen Cooker"),
-            HistoryEntry(session: CookSession(presetName: "Morning Routine",     mode: .bulk,     selectedSections:[0,1],   donenessLevels:["Hard","Hard",""],           startedAt: d(-7)), deviceName: "Kitchen Cooker")
+            HistoryEntry(session: CookSession(presetName: "Sunday Brunch",      mode: .bulk,     selectedEggs:[0,1,2,3,4,5], donenessLevels:["Medium","Medium","Medium"], startedAt: d(0)),  deviceName: "Kitchen Cooker"),
+            HistoryEntry(session: CookSession(presetName: "Quick boil",         mode: .bulk,     selectedEggs:[0,1],         donenessLevels:["Soft","Medium","Medium"],  startedAt: d(-1)), deviceName: "Kitchen Cooker"),
+            HistoryEntry(session: CookSession(presetName: "Cancelled cook",     mode: .bulk,     selectedEggs:[2,3],         donenessLevels:["Medium","Medium","Medium"],startedAt: d(-2), cancelled: true), deviceName: "Kitchen Cooker"),
+            HistoryEntry(session: CookSession(presetName: "Grandma's Favourite",mode: .separate, selectedEggs:[0,1,2,3,4,5], donenessLevels:["Soft","Medium","Hard"],   startedAt: d(-3)), deviceName: "Kitchen Cooker"),
+            HistoryEntry(session: CookSession(presetName: "Morning Routine",    mode: .bulk,     selectedEggs:[0,1,2,3],     donenessLevels:["Hard","Hard","Medium"],    startedAt: d(-7)), deviceName: "Kitchen Cooker")
         ]
+
+        // Seed a sample weekly schedule
+        var morningTime = DateComponents()
+        morningTime.hour = 7; morningTime.minute = 30
+        if let t = Calendar.current.date(from: morningTime), let p = presets.first {
+            scheduledCooks = [
+                ScheduledCook(preset: p, scheduleType: .weekly,
+                              fireTime: t, weekdays: [2, 4, 6])  // Mon, Wed, Fri
+            ]
+        }
 
         hasPairedDevice = true
     }

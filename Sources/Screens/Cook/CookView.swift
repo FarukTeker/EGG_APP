@@ -6,8 +6,6 @@ struct MainCookView: View {
     @EnvironmentObject private var store: AppStore
     @State private var showEggStyle = false
     @State private var showPresetPicker = false
-    @State private var cookModeStr = "Bulk"
-    @State private var separateLevels = ["Medium", "Medium", "Medium"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,21 +14,35 @@ struct MainCookView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     // Ring timer (idle state)
+                    let activeLevels = (0..<3)
+                        .filter { store.selectedEggs.contains($0 * 2) || store.selectedEggs.contains($0 * 2 + 1) }
+                        .map { store.donenessLevels[$0] }
                     let donenessMin = store.cookMode == .bulk
                         ? donenessTime(store.donenessLevels[0])
-                        : donenessTime(store.donenessLevels.max(by: { donenessOrder($0) < donenessOrder($1) }) ?? "Medium")
+                        : donenessTime(activeLevels.max(by: { donenessOrder($0) < donenessOrder($1) }) ?? "Medium")
                     VRing(big: timeStr(donenessMin * 60), sub: "until done", progress: 0)
                         .padding(.top, 8)
 
-                    // Bulk / Separate toggle
-                    VSeg(options: ["Bulk", "Separate"], active: $cookModeStr)
+                    // Low water warning
+                    let maxLevel = (store.cookMode == .bulk ? [store.donenessLevels[0]] : activeLevels)
+                        .max(by: { phaseDonenessOrder($0) < phaseDonenessOrder($1) }) ?? "Medium"
+                    let minWater = maxLevel == "Hard" ? 0.33 : maxLevel == "Medium" ? 0.22 : 0.15
+                    if store.waterLevel < minWater {
+                        VBanner(message: "Low water",
+                                detail: "Refill the tank before starting this program.",
+                                tone: .warning)
+                            .padding(.horizontal, 24)
+                    }
+
+                    // Bulk / Separate toggle — bound directly to store to stay in sync
+                    VSeg(options: ["Bulk", "Separate"], active: Binding(
+                        get: { store.cookMode == .bulk ? "Bulk" : "Separate" },
+                        set: { store.cookMode = $0 == "Bulk" ? .bulk : .separate }
+                    ))
                         .padding(.horizontal, 24)
-                        .onChange(of: cookModeStr) { _, v in
-                            store.cookMode = v == "Bulk" ? .bulk : .separate
-                        }
 
                     // Egg Grid
-                    VEggGrid(selected: $store.selectedSections)
+                    VEggGrid(selected: $store.selectedEggs)
                         .padding(.horizontal, 24)
 
                     // Doneness
@@ -42,6 +54,7 @@ struct MainCookView: View {
                         .padding(.horizontal, 24)
                     } else {
                         VDonenessSeparate(levels: $store.donenessLevels,
+                                          selectedEggs: store.selectedEggs,
                                           caption: "Per block · own level")
                         .padding(.horizontal, 24)
                     }
@@ -247,20 +260,46 @@ struct CookingActiveView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     if case .active(let remaining, let total) = store.cookingState {
-                        let progress = total > 0 ? Double(total - remaining) / Double(total) * 100 : 0
-                        VRing(big: timeStr(remaining), sub: "left", progress: progress)
+                        let elapsed = total - remaining
+                        let progress = total > 0 ? Double(elapsed) / Double(total) : 0
+                        let phases = buildRingPhases(mode: store.cookMode,
+                                                     levels: store.donenessLevels,
+                                                     eggs: store.selectedEggs)
+                        let display = phaseTimerDisplay(remaining: remaining, total: total,
+                                                        mode: store.cookMode,
+                                                        levels: store.donenessLevels,
+                                                        eggs: store.selectedEggs)
+                        let completedSections = Set((0..<3).filter { i in
+                            guard store.selectedEggs.contains(i*2) || store.selectedEggs.contains(i*2+1) else { return false }
+                            let lvl = store.cookMode == .bulk ? store.donenessLevels[0] : store.donenessLevels[i]
+                            return elapsed >= phaseDonenessSeconds(lvl)
+                        })
+                        VRing(big: display.big, sub: display.sub, progress: progress, phases: phases)
                             .padding(.top, 8)
+                        VSeg(options: ["Bulk", "Separate"],
+                             active: .constant(store.cookMode == .bulk ? "Bulk" : "Separate"))
+                            .disabled(true)
+                            .padding(.horizontal, 24)
+                        VEggGrid(selected: .constant(store.selectedEggs),
+                                 interactive: false,
+                                 completedSections: completedSections)
+                            .padding(.horizontal, 24)
+                        if store.cookMode == .bulk {
+                            VDonenessBulk(active: .constant(store.donenessLevels[0]),
+                                          caption: "All blocks · same level")
+                                .disabled(true)
+                                .padding(.horizontal, 24)
+                        } else {
+                            VDonenessSeparate(levels: .constant(store.donenessLevels),
+                                              selectedEggs: store.selectedEggs,
+                                              completedSections: completedSections,
+                                              caption: "Per block · own level")
+                                .disabled(true)
+                                .padding(.horizontal, 24)
+                        }
+                    } else {
+                        EmptyView()
                     }
-                    VSeg(options: ["Bulk", "Separate"],
-                         active: .constant(store.cookMode == .bulk ? "Bulk" : "Separate"))
-                        .disabled(true)
-                        .padding(.horizontal, 24)
-                    VEggGrid(selected: .constant(store.selectedSections), interactive: false)
-                        .padding(.horizontal, 24)
-                    VDonenessBulk(active: .constant(store.donenessLevels[0]),
-                                  caption: "All blocks · same level")
-                        .disabled(true)
-                        .padding(.horizontal, 24)
                 }
                 .padding(.bottom, 20)
             }
@@ -269,10 +308,6 @@ struct CookingActiveView: View {
                 .padding(.bottom, 32)
         }
         .background(Color.bgApp.ignoresSafeArea())
-    }
-
-    private func timeStr(_ s: Int) -> String {
-        String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 
@@ -404,7 +439,7 @@ struct WifiLostView: View {
             VTopbar()
             VBanner(message: "Connection lost", detail: "Cook continues on the device", tone: .warning)
                 .padding(.horizontal, 24).padding(.top, 12)
-            VRing(big: timeStr(remainingSeconds), sub: "left", progress: 62)
+            VRing(big: timeStr(remainingSeconds), sub: "left", progress: 0.62)
                 .padding(.top, 16)
             Spacer()
             VBtn(title: "Try to reconnect", kind: .ghost) { store.cookingState = .idle }
@@ -414,6 +449,7 @@ struct WifiLostView: View {
     }
     private func timeStr(_ s: Int) -> String { String(format: "%d:%02d", s / 60, s % 60) }
 }
+
 
 // MARK: - UC-21: No Eggs Detected
 
@@ -435,7 +471,7 @@ struct NoEggsView: View {
             Spacer()
             VStack(spacing: 12) {
                 VBtn(title: "Start anyway", kind: .ghost) {
-                    store.selectedSections = [0]
+                    store.selectedEggs = [0, 1]
                     store.startCook()
                 }
                 VBtn(title: "Go back", kind: .secondary) { store.cookingState = .idle }
@@ -444,4 +480,72 @@ struct NoEggsView: View {
         }
         .background(Color.bgApp.ignoresSafeArea())
     }
+}
+
+// MARK: - Phase helpers (file-private)
+
+private func phaseDonenessSeconds(_ level: String) -> Int {
+    switch level { case "Soft": return 240; case "Hard": return 540; default: return 360 }
+}
+
+private func phaseDonenessOrder(_ level: String) -> Int {
+    switch level { case "Soft": return 1; case "Hard": return 3; default: return 2 }
+}
+
+private func phaseLevelColor(_ level: String) -> Color {
+    switch level {
+    case "Soft":   return .info          // blue — fastest
+    case "Medium": return .accentOrange  // orange
+    case "Hard":   return .brandRed      // red — slowest
+    default:       return .accentOrange
+    }
+}
+
+private func buildRingPhases(mode: CookMode, levels: [String], eggs: Set<Int>) -> [RingPhase] {
+    let activeSections = (0..<3).filter { eggs.contains($0 * 2) || eggs.contains($0 * 2 + 1) }
+    let rawLevels = mode == .bulk ? [levels[0]] : activeSections.map { levels[$0] }
+    let uniqueSorted = Array(Set(rawLevels)).sorted { phaseDonenessOrder($0) < phaseDonenessOrder($1) }
+    guard let maxSecs = uniqueSorted.map({ phaseDonenessSeconds($0) }).max(), maxSecs > 0 else { return [] }
+    var result: [RingPhase] = []
+    var prev = 0
+    for level in uniqueSorted {
+        let cum = phaseDonenessSeconds(level)
+        if cum > prev {
+            result.append(RingPhase(
+                startFraction: Double(prev) / Double(maxSecs),
+                endFraction: Double(cum) / Double(maxSecs),
+                color: phaseLevelColor(level)))
+            prev = cum
+        }
+    }
+    return result
+}
+
+/// big = current-phase countdown; sub = "+N min NextLevel" or "left"
+private func phaseTimerDisplay(remaining: Int, total: Int,
+                                mode: CookMode, levels: [String],
+                                eggs: Set<Int>) -> (big: String, sub: String) {
+    let elapsed = total - remaining
+    let activeSections = (0..<3).filter { eggs.contains($0 * 2) || eggs.contains($0 * 2 + 1) }
+    let rawLevels = mode == .bulk ? [levels[0]] : activeSections.map { levels[$0] }
+    let uniqueSorted = Array(Set(rawLevels)).sorted { phaseDonenessOrder($0) < phaseDonenessOrder($1) }
+    let phases = uniqueSorted.map { (label: $0, cumSecs: phaseDonenessSeconds($0)) }
+
+    guard let idx = phases.firstIndex(where: { elapsed < $0.cumSecs }) else {
+        return (big: "0:00", sub: "done")
+    }
+    let cur = phases[idx]
+    let phaseRemaining = cur.cumSecs - elapsed
+    let sub: String
+    if idx + 1 < phases.count {
+        let next = phases[idx + 1]
+        sub = "+\(( next.cumSecs - cur.cumSecs) / 60) min \(next.label)"
+    } else {
+        sub = "left"
+    }
+    return (big: cookTimeStr(phaseRemaining), sub: sub)
+}
+
+private func cookTimeStr(_ s: Int) -> String {
+    String(format: "%d:%02d", s / 60, s % 60)
 }
