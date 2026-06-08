@@ -43,7 +43,7 @@ struct QRScanView: View {
 
             // QR placeholder
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.brandRed, lineWidth: 2)
+                .stroke(Color.brandYellow, lineWidth: 2)
                 .frame(width: 180, height: 180)
                 .overlay(
                     Image(systemName: "qrcode.viewfinder")

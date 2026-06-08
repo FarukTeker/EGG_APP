@@ -16,6 +16,7 @@ final class AppStore: ObservableObject {
     @Published var notificationsGranted: Bool = false
     @Published var autoDetectEggs: Bool = true
     @Published var defaultStyle: String = "Medium"
+    @Published var isDarkMode: Bool = true
 
     // MARK: - Devices (UC-05, UC-15)
     @Published var devices: [EggDevice] = []
@@ -48,14 +49,15 @@ final class AppStore: ObservableObject {
 
     func login(email: String, password: String) -> Bool {
         guard !email.isEmpty, !password.isEmpty else { return false }
-        currentUser.email = email
+        // E-mail büyük/küçük harfe duyarsız, şifre duyarlı karşılaştırılır.
+        currentUser.email = email.lowercased()
         isAuthenticated = true
         return true
     }
 
     func register(firstName: String, lastName: String, email: String, password: String) -> Bool {
         guard !email.isEmpty, password.count >= 8 else { return false }
-        currentUser = VestelUser(firstName: firstName, lastName: lastName, email: email)
+        currentUser = VestelUser(firstName: firstName, lastName: lastName, email: email.lowercased())
         isAuthenticated = true
         return true
     }

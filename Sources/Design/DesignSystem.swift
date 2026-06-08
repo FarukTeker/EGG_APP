@@ -1,24 +1,34 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Design Tokens (Vestel-Wireframes-standalone-2.html)
 
 extension Color {
+    /// Resolves to `light` or `dark` depending on the active interface style —
+    /// driven by `.preferredColorScheme`, not just the system setting.
+    static func adaptive(light: Color, dark: Color) -> Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
+        })
+    }
+
     // Backgrounds
-    static let bgApp      = Color(hex: "1B1B1D")
-    static let bgSurface1 = Color(hex: "2A2A2C")
-    static let bgSurface2 = Color(hex: "3A3A3D")
-    static let bgSurface3 = Color(hex: "4A4A4D")
+    static let bgApp      = adaptive(light: Color(hex: "EEE7E1"), dark: Color(hex: "1B1B1D"))
+    static let bgSurface1 = adaptive(light: Color(hex: "E2DCD5"), dark: Color(hex: "2A2A2C"))
+    static let bgSurface2 = adaptive(light: Color(hex: "D6CFC6"), dark: Color(hex: "3A3A3D"))
+    static let bgSurface3 = adaptive(light: Color(hex: "CAC1B7"), dark: Color(hex: "4A4A4D"))
 
     // Text
-    static let fg1        = Color.white
-    static let fg2        = Color(hex: "B8B8BA")
-    static let fg3        = Color(hex: "7A7A7C")
-    static let fgDisabled = Color(hex: "5A5A5C")
+    static let fg1        = adaptive(light: Color(hex: "2B2B2B"), dark: Color.white)
+    static let fg2        = adaptive(light: Color(hex: "6B6B6B"), dark: Color(hex: "B8B8BA"))
+    static let fg3        = adaptive(light: Color(hex: "9B9B9B"), dark: Color(hex: "7A7A7C"))
+    static let fgDisabled = adaptive(light: Color(hex: "B5B5B5"), dark: Color(hex: "5A5A5C"))
 
     // Brand & accent
     static let brandRed      = Color(hex: "E72325")
-    static let brandRedPress = Color(hex: "C61A1C")
-    static let brandRedSoft  = Color(hex: "401012")
+    static let brandYellow      = Color(hex: "F8A838")
+    static let brandYellowPress = Color(hex: "D88E20")
+    static let brandYellowSoft  = adaptive(light: Color(hex: "FBE2BB"), dark: Color(hex: "3D2C0E"))
     static let accentOrange  = Color(hex: "F58025")
 
     // Semantic
@@ -27,8 +37,8 @@ extension Color {
     static let info    = Color(hex: "4A8DFF")
 
     // Hairlines
-    static let line1 = Color.white.opacity(0.08)
-    static let line2 = Color.white.opacity(0.16)
+    static let line1 = adaptive(light: Color.black.opacity(0.08), dark: Color.white.opacity(0.08))
+    static let line2 = adaptive(light: Color.black.opacity(0.16), dark: Color.white.opacity(0.16))
 
     init(hex: String) {
         let h = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -77,7 +87,7 @@ struct VBtn: View {
 
     private var background: Color {
         switch kind {
-        case .primary:      return .brandRed
+        case .primary:      return .brandYellow
         case .secondary:    return .bgSurface1
         case .ghost:        return .clear
         case .dangerOutline: return .clear
@@ -89,13 +99,13 @@ struct VBtn: View {
         case .primary:      return .white
         case .secondary:    return .fg1
         case .ghost:        return .fg2
-        case .dangerOutline: return .brandRed
+        case .dangerOutline: return .brandYellow
         }
     }
 
     private var borderColor: Color {
         switch kind {
-        case .dangerOutline: return .brandRed
+        case .dangerOutline: return .brandYellow
         case .ghost:        return .line2
         default:            return .clear
         }
@@ -142,7 +152,8 @@ struct VInput: View {
         .padding(.vertical, 14)
         .background(Color.bgSurface2)
         .clipShape(Capsule())
-        .tint(.brandRed)
+        .tint(.brandYellow)
+        .textInputAutocapitalization(.never)
     }
 }
 
@@ -161,7 +172,7 @@ struct VSeg: View {
                         .foregroundStyle(active == opt ? .white : Color.fg3)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(active == opt ? Color.brandRed : Color.clear)
+                        .background(active == opt ? Color.brandYellow : Color.clear)
                         .clipShape(Capsule())
                 }
             }
@@ -206,7 +217,7 @@ struct VTopbar: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 4)
-        .sheet(isPresented: $showProfile) { EditProfileView() }
+        .sheet(isPresented: $showProfile) { ProfileOverviewView() }
     }
 }
 
@@ -233,7 +244,7 @@ struct VNavHeader: View {
             if let icon = trailingIcon, let onTrailing {
                 Button { onTrailing() } label: {
                     Image(systemName: icon)
-                        .foregroundStyle(Color.brandRed)
+                        .foregroundStyle(Color.brandYellow)
                         .frame(width: 32, height: 32)
                 }
             } else {
@@ -268,7 +279,7 @@ struct VRing: View {
 
     var body: some View {
         ZStack {
-            // Background track
+            // Resting track — stays this gray-black tone wherever a bar has drained, and everywhere once done
             Circle()
                 .stroke(Color.bgSurface2, lineWidth: 8)
                 .frame(width: radius * 2, height: radius * 2)
@@ -283,31 +294,34 @@ struct VRing: View {
                         .rotationEffect(.degrees(-90))
                 }
             } else {
-                // Ghost arcs: full extent of each phase at low opacity (progress preview)
+                // Each level's boundary dot sits at its end point from the very start, alongside
+                // its full-color bar. As that level's time runs out, the bar drains toward the
+                // dot — revealing the bare ring behind it — and the dot itself only disappears
+                // once the bar has fully emptied into it.
                 ForEach(phases) { phase in
-                    Circle()
-                        .trim(from: phase.startFraction, to: phase.endFraction)
-                        .stroke(phase.color.opacity(0.18), style: StrokeStyle(lineWidth: 8, lineCap: .butt))
-                        .frame(width: radius * 2, height: radius * 2)
-                        .rotationEffect(.degrees(-90))
-                }
-                // Active fills: filled portion at full opacity
-                ForEach(phases) { phase in
-                    if phase.startFraction < progress {
+                    let span = phase.endFraction - phase.startFraction
+                    let drained = span > 0 ? clamp((progress - phase.startFraction) / span) : 1
+                    let visibleStart = phase.startFraction + drained * span
+                    if visibleStart < phase.endFraction {
                         Circle()
-                            .trim(from: phase.startFraction, to: min(progress, phase.endFraction))
-                            .stroke(phase.color, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .trim(from: visibleStart, to: phase.endFraction)
+                            .stroke(phase.color, style: StrokeStyle(lineWidth: 8, lineCap: .butt))
                             .frame(width: radius * 2, height: radius * 2)
                             .rotationEffect(.degrees(-90))
                     }
                 }
-                // Tip dot tracks arc end — only visible when cooking
-                if progress > 0 {
-                    Circle()
-                        .fill(dotColor)
-                        .frame(width: 8, height: 8)
-                        .offset(y: -radius)
-                        .rotationEffect(.degrees(progress * 360))
+                // Dots are drawn in a second pass, on top of every bar, so a neighbouring
+                // phase's full-length bar never paints over a still-visible boundary dot.
+                ForEach(phases) { phase in
+                    let span = phase.endFraction - phase.startFraction
+                    let drained = span > 0 ? clamp((progress - phase.startFraction) / span) : 1
+                    if drained < 1 {
+                        Circle()
+                            .fill(phase.color)
+                            .frame(width: 14, height: 14)
+                            .offset(y: -radius)
+                            .rotationEffect(.degrees(phase.endFraction * 360))
+                    }
                 }
             }
 
@@ -323,8 +337,8 @@ struct VRing: View {
         .frame(width: radius * 2 + 20, height: radius * 2 + 20)
     }
 
-    private var dotColor: Color {
-        phases.last(where: { $0.startFraction < progress })?.color ?? Color.accentOrange
+    private func clamp(_ value: Double) -> Double {
+        min(1, max(0, value))
     }
 }
 
@@ -418,19 +432,19 @@ private struct EggOval: View {
     let isSelected: Bool
     var isCompleted: Bool = false
     var body: some View {
-        Ellipse()
+        Circle()
             .fill(
                 isCompleted   ? Color.success.opacity(0.20) :
                 isSelected    ? Color.accentOrange.opacity(0.25) : Color.bgSurface2
             )
             .overlay(
-                Ellipse()
+                Circle()
                     .stroke(
                         isCompleted  ? Color.success.opacity(0.7) :
                         isSelected   ? Color.accentOrange : Color.bgSurface3,
                         lineWidth: 1.5)
             )
-            .frame(width: 36, height: 48)
+            .frame(width: 40, height: 40)
     }
 }
 
@@ -454,7 +468,7 @@ struct VDonenessBulk: View {
                             .foregroundStyle(active == opt ? .white : Color.fg2)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
-                            .background(active == opt ? Color.brandRed : Color.bgSurface2)
+                            .background(active == opt ? Color.brandYellow : Color.bgSurface2)
                             .clipShape(Capsule())
                     }
                 }
@@ -554,7 +568,7 @@ struct VListRow: View {
                     Text(label).font(.vestelBody).foregroundStyle(Color.fg1)
                     Spacer()
                     Toggle("", isOn: $toggleValue)
-                        .tint(.brandRed)
+                        .tint(.brandYellow)
                         .labelsHidden()
                 }
                 .padding(.vertical, 14)
@@ -649,10 +663,10 @@ struct VBigIcon: View {
     }
 
     private var bgColor: Color {
-        switch tone { case .primary: return .brandRedSoft; case .success: return Color(hex: "0D2E1E"); case .warning: return Color(hex: "2E2200") }
+        switch tone { case .primary: return .brandYellowSoft; case .success: return Color(hex: "0D2E1E"); case .warning: return Color(hex: "2E2200") }
     }
     private var fgColor: Color {
-        switch tone { case .primary: return .brandRed; case .success: return .success; case .warning: return .warning }
+        switch tone { case .primary: return .brandYellow; case .success: return .success; case .warning: return .warning }
     }
 }
 
@@ -666,7 +680,7 @@ struct VDots: View {
         HStack(spacing: 6) {
             ForEach(0..<count, id: \.self) { i in
                 Capsule()
-                    .fill(i == active ? Color.brandRed : Color.bgSurface3)
+                    .fill(i == active ? Color.brandYellow : Color.bgSurface3)
                     .frame(width: i == active ? 20 : 6, height: 6)
                     .animation(.easeInOut, value: active)
             }
@@ -712,7 +726,7 @@ struct VDeviceRow: View {
         switch state { case .active: return "Active"; case .idle: return "Idle"; case .offline: return "Offline" }
     }
     private var stateColor: Color {
-        switch state { case .active: return .success; case .idle: return .fg3; case .offline: return .brandRed }
+        switch state { case .active: return .success; case .idle: return .fg3; case .offline: return .brandYellow }
     }
 }
 
@@ -749,32 +763,39 @@ struct VWaterButton: View {
     var body: some View {
         Button { showDetail = true } label: {
             ZStack {
-                // Faint full-drop background
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(waterColor.opacity(0.2))
-                // Fill mask from bottom
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(waterColor)
-                    .mask(
+                // Gauge body
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(Color.bgSurface2)
+                // Level fill — rises from the left edge like a ruler gauge
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(waterColor)
+                    .mask(alignment: .leading) {
                         GeometryReader { geo in
-                            VStack(spacing: 0) {
-                                Color.clear
-                                    .frame(height: geo.size.height * (1 - store.waterLevel))
-                                Color.black
-                                    .frame(height: geo.size.height * store.waterLevel)
-                            }
+                            Rectangle().frame(width: geo.size.width * store.waterLevel)
                         }
-                    )
+                    }
+                // Ruler tick marks
+                HStack(spacing: 0) {
+                    ForEach(0..<5, id: \.self) { i in
+                        Rectangle()
+                            .fill(Color.fg1.opacity(0.55))
+                            .frame(width: 1.3)
+                            .padding(.top, 3)
+                            .padding(.bottom, i.isMultiple(of: 2) ? 8 : 4)
+                        if i < 4 { Spacer(minLength: 0) }
+                    }
+                }
+                .padding(.horizontal, 5)
+                RoundedRectangle(cornerRadius: 5)
+                    .stroke(Color.fg1.opacity(0.55), lineWidth: 1.4)
             }
-            .frame(width: 32, height: 32)
+            .frame(width: 34, height: 22)
         }
         .sheet(isPresented: $showDetail) { WaterDetailSheet() }
     }
 
     private var waterColor: Color {
-        if store.waterLevel < 0.15 { return .brandRed }
+        if store.waterLevel < 0.15 { return .brandYellow }
         if store.waterLevel < 0.30 { return .warning }
         return .info
     }
@@ -788,7 +809,7 @@ private struct WaterDetailSheet: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Water Tank") { dismiss() }
+                VNavHeader(title: "Water Tank", onBack: { dismiss() })
 
                 Spacer()
 
@@ -841,7 +862,7 @@ private struct WaterDetailSheet: View {
     }
 
     private var waterColor: Color {
-        if store.waterLevel < 0.15 { return .brandRed }
+        if store.waterLevel < 0.15 { return .brandYellow }
         if store.waterLevel < 0.30 { return .warning }
         return .info
     }

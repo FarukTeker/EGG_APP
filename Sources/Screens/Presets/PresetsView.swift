@@ -41,12 +41,12 @@ struct PresetsTabView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showSchedules = true } label: {
                         Image(systemName: "calendar.badge.clock")
-                            .foregroundStyle(store.scheduledCooks.isEmpty ? Color.fg3 : Color.brandRed)
+                            .foregroundStyle(store.scheduledCooks.isEmpty ? Color.fg3 : Color.brandYellow)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { editingPreset = nil; showEditor = true } label: {
-                        Image(systemName: "plus").foregroundStyle(Color.brandRed)
+                        Image(systemName: "plus").foregroundStyle(Color.brandYellow)
                     }
                 }
             }
@@ -261,7 +261,7 @@ struct SharePresetView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Share preset") { dismiss() }
+                VNavHeader(title: "Share preset", onBack: { dismiss() })
 
                 Spacer()
 
@@ -374,7 +374,7 @@ private struct ScheduleRow: View {
                     Text(schedule.summaryLine)
                         .font(.vestelCaption).foregroundStyle(Color.fg3)
                     Text(schedule.scheduleType.rawValue)
-                        .font(.vestelCaption).foregroundStyle(schedule.isEnabled ? Color.brandRed : Color.fg3)
+                        .font(.vestelCaption).foregroundStyle(schedule.isEnabled ? Color.brandYellow : Color.fg3)
                 }
                 Spacer()
                 Toggle("", isOn: Binding(
@@ -383,7 +383,7 @@ private struct ScheduleRow: View {
                         var s = schedule; s.isEnabled = enabled
                         store.updateSchedule(s)
                     }))
-                    .tint(.brandRed)
+                    .tint(.brandYellow)
                     .labelsHidden()
                 Button { onEdit() } label: {
                     Image(systemName: "pencil")
@@ -451,7 +451,7 @@ struct ScheduleEditorSheet: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: schedule == nil ? "New Schedule" : "Edit Schedule") { dismiss() }
+                VNavHeader(title: schedule == nil ? "New Schedule" : "Edit Schedule", onBack: { dismiss() })
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
@@ -494,7 +494,7 @@ struct ScheduleEditorSheet: View {
                                     .padding(.horizontal, 24)
                                 DatePicker("", selection: $oneTimeDate, in: Date()..., displayedComponents: .date)
                                     .datePickerStyle(.graphical)
-                                    .tint(Color.brandRed)
+                                    .tint(Color.brandYellow)
                                     .padding(.horizontal, 16)
                                     .background(Color.bgSurface1)
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -520,7 +520,7 @@ struct ScheduleEditorSheet: View {
                             DatePicker("", selection: $fireTime, displayedComponents: .hourAndMinute)
                                 .datePickerStyle(.wheel)
                                 .labelsHidden()
-                                .tint(Color.brandRed)
+                                .tint(Color.brandYellow)
                                 .frame(maxWidth: .infinity)
                                 .padding(.horizontal, 24)
                                 .colorScheme(.dark)
@@ -563,7 +563,7 @@ private struct PresetPickerForSchedule: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Choose Preset") { dismiss() }
+                VNavHeader(title: "Choose Preset", onBack: { dismiss() })
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(store.presets) { preset in
@@ -579,7 +579,7 @@ private struct PresetPickerForSchedule: View {
                                     Spacer()
                                     if selected?.id == preset.id {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(Color.brandRed)
+                                            .foregroundStyle(Color.brandYellow)
                                     }
                                 }
                                 .padding(.horizontal, 24).padding(.vertical, 14)
@@ -617,7 +617,7 @@ struct WeekdaySelector: View {
                         .font(.vestelLabel)
                         .foregroundStyle(active ? .white : Color.fg2)
                         .frame(width: 38, height: 38)
-                        .background(active ? Color.brandRed : Color.bgSurface2)
+                        .background(active ? Color.brandYellow : Color.bgSurface2)
                         .clipShape(Circle())
                 }
             }

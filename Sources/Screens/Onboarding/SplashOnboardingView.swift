@@ -9,7 +9,7 @@ struct SplashView: View {
             VStack(spacing: 8) {
                 Text("vestel")
                     .font(.system(size: 40, weight: .bold, design: .default))
-                    .foregroundStyle(Color.brandRed)
+                    .foregroundStyle(Color.brandYellow)
                     .tracking(-1)
                 Text("Smart Egg Cooker")
                     .font(.vestelCaption)

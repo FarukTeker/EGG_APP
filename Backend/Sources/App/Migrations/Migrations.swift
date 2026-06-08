@@ -6,11 +6,12 @@ struct CreateUsers: AsyncMigration {
     func prepare(on db: Database) async throws {
         try await db.schema("users")
             .id()
-            .field("first_name",    .string,   .required)
-            .field("last_name",     .string,   .required)
-            .field("email",         .string,   .required)
+            .field("first_name",    .string, .required)
+            .field("last_name",     .string, .required)
+            .field("email",         .string, .required)
             .unique(on: "email")
-            .field("password_hash", .string,   .required)
+            .field("password_hash", .string, .required)
+            .field("avatar_url",    .string)
             .field("created_at",    .datetime)
             .create()
     }
@@ -30,6 +31,7 @@ struct CreateDevices: AsyncMigration {
             .field("model_code",   .string, .required)
             .field("state",        .string, .required)
             .field("is_active",    .bool,   .required)
+            .field("pairing_code", .string)
             .field("created_at",   .datetime)
             .field("last_seen_at", .datetime)
             .create()
@@ -39,19 +41,20 @@ struct CreateDevices: AsyncMigration {
     }
 }
 
-// MARK: - UC-09, UC-12: Presets table
+// MARK: - UC-09, UC-12, UC-13: Presets table
 
 struct CreatePresets: AsyncMigration {
     func prepare(on db: Database) async throws {
         try await db.schema("presets")
             .id()
-            .field("user_id",          .uuid,   .required, .references("users", "id", onDelete: .cascade))
-            .field("name",             .string, .required)
-            .field("mode",             .string, .required)
-            .field("selected_sections", .array(of: .int), .required)
+            .field("user_id",           .uuid,   .required, .references("users", "id", onDelete: .cascade))
+            .field("name",              .string, .required)
+            .field("mode",              .string, .required)
+            .field("selected_sections", .array(of: .int),    .required)
             .field("doneness_levels",   .array(of: .string), .required)
-            .field("created_at",       .datetime)
-            .field("updated_at",       .datetime)
+            .field("share_code",        .string)
+            .field("created_at",        .datetime)
+            .field("updated_at",        .datetime)
             .create()
     }
     func revert(on db: Database) async throws {
@@ -59,21 +62,23 @@ struct CreatePresets: AsyncMigration {
     }
 }
 
-// MARK: - UC-06, UC-11: Cook Sessions table
+// MARK: - UC-06, UC-10, UC-11: Cook Sessions table
 
 struct CreateCookSessions: AsyncMigration {
     func prepare(on db: Database) async throws {
         try await db.schema("cook_sessions")
             .id()
-            .field("user_id",          .uuid,   .required, .references("users", "id", onDelete: .cascade))
-            .field("device_id",        .uuid)
-            .field("preset_name",      .string)
-            .field("mode",             .string, .required)
-            .field("selected_sections", .array(of: .int), .required)
+            .field("user_id",           .uuid,   .required, .references("users", "id", onDelete: .cascade))
+            .field("device_id",         .uuid)
+            .field("preset_name",       .string)
+            .field("mode",              .string, .required)
+            .field("selected_sections", .array(of: .int),    .required)
             .field("doneness_levels",   .array(of: .string), .required)
-            .field("status",           .string, .required)
-            .field("started_at",       .datetime)
-            .field("completed_at",     .datetime)
+            .field("status",            .string, .required)
+            .field("scheduled_at",      .datetime)
+            .field("paused_at",         .datetime)
+            .field("started_at",        .datetime)
+            .field("completed_at",      .datetime)
             .create()
     }
     func revert(on db: Database) async throws {
@@ -87,18 +92,54 @@ struct CreateNotificationPrefs: AsyncMigration {
     func prepare(on db: Database) async throws {
         try await db.schema("notification_prefs")
             .id()
-            .field("user_id",          .uuid, .required, .references("users", "id", onDelete: .cascade))
+            .field("user_id",            .uuid, .required, .references("users", "id", onDelete: .cascade))
             .unique(on: "user_id")
-            .field("cook_complete",    .bool, .required)
-            .field("five_min_reminder",.bool, .required)
-            .field("scheduled_start",  .bool, .required)
-            .field("offline_alert",    .bool, .required)
-            .field("firmware_updates", .bool, .required)
-            .field("tips_recipes",     .bool, .required)
-            .field("vestel_marketing", .bool, .required)
+            .field("cook_complete",      .bool, .required)
+            .field("five_min_reminder",  .bool, .required)
+            .field("scheduled_start",    .bool, .required)
+            .field("offline_alert",      .bool, .required)
+            .field("firmware_updates",   .bool, .required)
+            .field("tips_recipes",       .bool, .required)
+            .field("vestel_marketing",   .bool, .required)
             .create()
     }
     func revert(on db: Database) async throws {
         try await db.schema("notification_prefs").delete()
+    }
+}
+
+// MARK: - UC-04: Password reset tokens table
+
+struct CreatePasswordResetTokens: AsyncMigration {
+    func prepare(on db: Database) async throws {
+        try await db.schema("password_reset_tokens")
+            .id()
+            .field("user_id",    .uuid,   .required, .references("users", "id", onDelete: .cascade))
+            .field("token",      .string, .required)
+            .field("expires_at", .datetime, .required)
+            .field("used_at",    .datetime)
+            .field("created_at", .datetime)
+            .create()
+    }
+    func revert(on db: Database) async throws {
+        try await db.schema("password_reset_tokens").delete()
+    }
+}
+
+// MARK: - Watch S20: Watch settings table
+
+struct CreateWatchSettings: AsyncMigration {
+    func prepare(on db: Database) async throws {
+        try await db.schema("watch_settings")
+            .id()
+            .field("user_id",    .uuid, .required, .references("users", "id", onDelete: .cascade))
+            .unique(on: "user_id")
+            .field("haptics",    .bool, .required)
+            .field("chime",      .bool, .required)
+            .field("auto_start", .bool, .required)
+            .create()
+    }
+    func revert(on db: Database) async throws {
+        try await db.schema("watch_settings").delete()
     }
 }

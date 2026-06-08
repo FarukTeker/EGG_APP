@@ -146,7 +146,7 @@ struct EggStyleView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Egg Style") { dismiss() }
+                VNavHeader(title: "Egg Style", onBack: { dismiss() })
                 Text("How do you like them?")
                     .font(.vestelH3)
                     .foregroundStyle(Color.fg1)
@@ -158,7 +158,7 @@ struct EggStyleView: View {
                         HStack(spacing: 14) {
                             Image(systemName: s.icon)
                                 .font(.system(size: 28))
-                                .foregroundStyle(selected == s.name ? Color.brandRed : Color.fg3)
+                                .foregroundStyle(selected == s.name ? Color.brandYellow : Color.fg3)
                                 .frame(width: 40)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(s.name).font(.vestelH3).foregroundStyle(Color.fg1)
@@ -167,14 +167,14 @@ struct EggStyleView: View {
                             Spacer()
                             if selected == s.name {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(Color.brandRed)
+                                    .foregroundStyle(Color.brandYellow)
                             }
                         }
                         .padding(16)
-                        .background(selected == s.name ? Color.brandRedSoft : Color.bgSurface1)
+                        .background(selected == s.name ? Color.brandYellowSoft : Color.bgSurface1)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14)
-                            .stroke(selected == s.name ? Color.brandRed : Color.clear, lineWidth: 1.5))
+                            .stroke(selected == s.name ? Color.brandYellow : Color.clear, lineWidth: 1.5))
                         .onTapGesture { selected = s.name }
                     }
                 }
@@ -185,12 +185,14 @@ struct EggStyleView: View {
 
                 VBtn(title: "Continue") {
                     store.donenessLevels = [selected, selected, selected]
+                    store.defaultStyle = selected
                     dismiss()
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)
             }
         }
+        .onAppear { selected = store.donenessLevels[0] }
     }
 }
 
@@ -204,7 +206,7 @@ struct PresetPickerSheet: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
-                VNavHeader(title: "Presets") { dismiss() }
+                VNavHeader(title: "Presets", onBack: { dismiss() })
                     .padding(.top, 8)
 
                 if store.presets.isEmpty {

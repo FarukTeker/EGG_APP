@@ -47,7 +47,7 @@ struct LoginView: View {
                         )
                     Text("vestel")
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.brandRed)
+                        .foregroundStyle(Color.brandYellow)
                 }
                 .padding(.top, 60)
                 .padding(.bottom, 40)
@@ -61,7 +61,7 @@ struct LoginView: View {
                 if let err = errorText {
                     Text(err)
                         .font(.vestelCaption)
-                        .foregroundStyle(Color.brandRed)
+                        .foregroundStyle(Color.brandYellow)
                         .padding(.top, 8)
                 }
 
@@ -78,6 +78,7 @@ struct LoginView: View {
                 .padding(.top, 28)
                 .padding(.bottom, 40)
             }
+            .frame(maxWidth: .infinity)  // ScrollView içindeki VStack genişliği için gerekli
         }
     }
 }
@@ -116,7 +117,7 @@ struct RegisterView: View {
                 if let err = errorText {
                     Text(err)
                         .font(.vestelCaption)
-                        .foregroundStyle(Color.brandRed)
+                        .foregroundStyle(Color.brandYellow)
                         .padding(.top, 8)
                 }
 
@@ -140,6 +141,7 @@ struct RegisterView: View {
                 .padding(.top, 28)
                 .padding(.bottom, 40)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 }

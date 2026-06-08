@@ -8,7 +8,7 @@ struct VestelEggCookerApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(store)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(store.isDarkMode ? .dark : .light)
         }
     }
 }

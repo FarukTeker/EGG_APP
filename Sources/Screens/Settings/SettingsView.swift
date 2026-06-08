@@ -6,6 +6,7 @@ import PhotosUI
 struct SettingsTabView: View {
     @EnvironmentObject private var store: AppStore
     @State private var route: SettingsRoute? = nil
+    var onClose: (() -> Void)? = nil
 
     enum SettingsRoute: Hashable {
         case profile, changePassword, devices, defaultStyle, notifications, language, help
@@ -41,13 +42,14 @@ struct SettingsTabView: View {
 
                         VListRow(label: "Notifications", showChev: true) { route = .notifications }
                         VListRow(label: "Language", value: store.language.rawValue.components(separatedBy: " ").first ?? "EN", showChev: true) { route = .language }
+                        VListRow(label: "Dark Mode", toggle: $store.isDarkMode)
                         VListRow(label: "Help", showChev: true) { route = .help }
 
                         // Sign out
                         Button { store.logout() } label: {
                             Text("Sign Out")
                                 .font(.vestelButton)
-                                .foregroundStyle(Color.brandRed)
+                                .foregroundStyle(Color.brandYellow)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                         }
@@ -62,6 +64,14 @@ struct SettingsTabView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Settings").font(.vestelH3).foregroundStyle(Color.fg1)
+                }
+                if let onClose {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: onClose) {
+                            Image(systemName: "chevron.left")
+                                .foregroundStyle(Color.fg1)
+                        }
+                    }
                 }
             }
             .navigationDestination(item: $route) { r in
@@ -94,7 +104,7 @@ struct EditProfileView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Profile") { dismiss() }
+                VNavHeader(title: "Profile", onBack: { dismiss() })
 
                 VStack(spacing: 12) {
                     // Avatar — tapping opens the photo picker
@@ -166,6 +176,137 @@ struct EditProfileView: View {
     }
 }
 
+// MARK: - Profile Overview (shown from the home topbar avatar)
+
+struct ProfileOverviewView: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var showEditProfile = false
+    @State private var showSettings = false
+    @State private var showDefaultStyle = false
+    @State private var showPresetEditor = false
+    @State private var editingPreset: EggPreset? = nil
+    @State private var showScheduleEditor = false
+
+    var body: some View {
+        ZStack {
+            Color.bgApp.ignoresSafeArea()
+            VStack(spacing: 0) {
+                VNavHeader(title: "Profile", onBack: { dismiss() })
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 28) {
+                        HStack {
+                            Button { showEditProfile = true } label: {
+                                Circle()
+                                    .fill(Color.accentOrange)
+                                    .frame(width: 56, height: 56)
+                                    .overlay(
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 22))
+                                            .foregroundStyle(.white)
+                                    )
+                            }
+                            Spacer()
+                            Button { showSettings = true } label: {
+                                Image(systemName: "slider.horizontal.3")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(Color.fg2)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.bgSurface1)
+                                    .clipShape(Circle())
+                            }
+                        }
+                        .padding(.top, 8)
+
+                        VStack(alignment: .center, spacing: 0) {
+                            Text("Egg Preferences")
+                                .font(.vestelH3)
+                                .foregroundStyle(Color.fg1)
+                                .frame(maxWidth: .infinity)
+                                .padding(.bottom, 12)
+                            Divider().background(Color.line1)
+
+                            VListRow(label: "Default Style", value: store.defaultStyle, showChev: true) {
+                                showDefaultStyle = true
+                            }
+                            VListRow(label: "Notify When Done", toggle: $store.notificationPrefs.cookComplete)
+                            VListRow(label: "Auto Detect Eggs", toggle: $store.autoDetectEggs)
+                        }
+
+                        VStack(alignment: .center, spacing: 16) {
+                            VStack(spacing: 0) {
+                                Text("Saved Presets")
+                                    .font(.vestelH3)
+                                    .foregroundStyle(Color.fg1)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.bottom, 12)
+                                Divider().background(Color.line1)
+                            }
+
+                            VStack(spacing: 12) {
+                                ForEach(store.presets) { preset in
+                                    Button {
+                                        store.applyPreset(preset)
+                                        dismiss()
+                                    } label: {
+                                        Text(preset.name)
+                                            .font(.vestelButton)
+                                            .foregroundStyle(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 14)
+                                            .background(Color.brandYellow)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+
+                                Button {
+                                    showScheduleEditor = true
+                                } label: {
+                                    Text("+ Add Schedule")
+                                        .font(.vestelButton)
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 14)
+                                        .background(Color.brandYellow.opacity(0.85))
+                                        .clipShape(Capsule())
+                                }
+
+                                Button {
+                                    editingPreset = nil
+                                    showPresetEditor = true
+                                } label: {
+                                    Text("+ Add Preset")
+                                        .font(.vestelButton)
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 14)
+                                        .background(Color.brandYellow.opacity(0.85))
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32)
+                }
+            }
+        }
+        .sheet(isPresented: $showEditProfile) { EditProfileView() }
+        .sheet(isPresented: $showSettings) { SettingsTabView(onClose: { showSettings = false }) }
+        .sheet(isPresented: $showDefaultStyle) { DefaultStyleView() }
+        .sheet(isPresented: $showPresetEditor) { PresetEditorView(preset: editingPreset) }
+        .sheet(isPresented: $showScheduleEditor) {
+            ScheduleEditorSheet(preselectedPreset: store.presets.first) { newSchedule in
+                store.addSchedule(newSchedule)
+            }
+        }
+        .navigationBarHidden(true)
+    }
+}
+
 // MARK: - Change Password (inline Reset flow)
 
 struct ChangePasswordView: View {
@@ -178,7 +319,7 @@ struct ChangePasswordView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Change password") { dismiss() }
+                VNavHeader(title: "Change password", onBack: { dismiss() })
                 VStack(spacing: 12) {
                     VInput(placeholder: "Current password",  text: $current, isSecure: true)
                     VInput(placeholder: "New password",      text: $newPass, isSecure: true)
@@ -208,7 +349,7 @@ struct NotificationSettingsView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Notifications") { dismiss() }
+                VNavHeader(title: "Notifications", onBack: { dismiss() })
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         sectionHeader("Cooking")
@@ -246,7 +387,7 @@ struct LanguageView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Language") { dismiss() }
+                VNavHeader(title: "Language", onBack: { dismiss() })
                 List(AppLanguage.allCases, id: \.self) { lang in
                     Button {
                         store.language = lang
@@ -282,7 +423,7 @@ struct HelpView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Help") { dismiss() }
+                VNavHeader(title: "Help", onBack: { dismiss() })
                 Spacer()
                 VStack(spacing: 12) {
                     Image(systemName: "questionmark.circle").font(.system(size: 52)).foregroundStyle(Color.fg3)
@@ -311,7 +452,7 @@ struct DefaultStyleView: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: "Default Style") { dismiss() }
+                VNavHeader(title: "Default Style", onBack: { dismiss() })
                 Text("Applied when you start a new cook without adjusting levels.")
                     .font(.vestelCaption)
                     .foregroundStyle(Color.fg3)
@@ -333,15 +474,15 @@ struct DefaultStyleView: View {
                                 Spacer()
                                 if selected {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(Color.brandRed)
+                                        .foregroundStyle(Color.brandYellow)
                                 }
                             }
                             .padding(16)
-                            .background(selected ? Color.brandRedSoft : Color.bgSurface1)
+                            .background(selected ? Color.brandYellowSoft : Color.bgSurface1)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 14)
-                                    .stroke(selected ? Color.brandRed : Color.clear, lineWidth: 1.5)
+                                    .stroke(selected ? Color.brandYellow : Color.clear, lineWidth: 1.5)
                             )
                         }
                     }
@@ -404,7 +545,7 @@ struct DevicesManagementView: View {
                                         Spacer()
                                         if store.activeDevice?.id == device.id {
                                             Image(systemName: "checkmark.circle.fill")
-                                                .foregroundStyle(Color.brandRed)
+                                                .foregroundStyle(Color.brandYellow)
                                         }
                                     }
                                     .padding(.horizontal, 24)

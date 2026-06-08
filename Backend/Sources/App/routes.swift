@@ -6,21 +6,24 @@ func routes(_ app: Application) throws {
 
     let api = app.grouped("api", "v1")
 
-    // Auth — public routes (UC-02, UC-03, UC-04)
+    // Public auth routes (UC-02, UC-03, UC-04)
     let authController = AuthController()
     try api.register(collection: authController)
 
     // Protected routes — require valid JWT
     let protected = api.grouped(JWTAuthMiddleware())
-    let deviceController  = DeviceController()
-    let presetController  = PresetController()
-    let cookController    = CookController()
-    let profileController = ProfileController()
-    let notifController   = NotificationController()
+
+    let deviceController       = DeviceController()
+    let presetController       = PresetController()
+    let cookController         = CookController()
+    let profileController      = ProfileController()
+    let notifController        = NotificationController()
+    let watchSettingsController = WatchSettingsController()
 
     try protected.register(collection: deviceController)
     try protected.register(collection: presetController)
     try protected.register(collection: cookController)
     try protected.register(collection: profileController)
     try protected.register(collection: notifController)
+    try protected.register(collection: watchSettingsController)
 }

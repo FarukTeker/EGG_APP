@@ -8,16 +8,18 @@ final class User: Model, Content, @unchecked Sendable {
     static let schema = "users"
 
     @ID(key: .id) var id: UUID?
-    @Field(key: "first_name")   var firstName: String
-    @Field(key: "last_name")    var lastName: String
-    @Field(key: "email")        var email: String
+    @Field(key: "first_name")    var firstName: String
+    @Field(key: "last_name")     var lastName: String
+    @Field(key: "email")         var email: String
     @Field(key: "password_hash") var passwordHash: String
+    @OptionalField(key: "avatar_url") var avatarUrl: String?   // UC-16 profile photo
     @Timestamp(key: "created_at", on: .create) var createdAt: Date?
 
     @Children(for: \.$user) var devices: [Device]
     @Children(for: \.$user) var presets: [Preset]
     @Children(for: \.$user) var cookSessions: [CookSession]
     @OptionalChild(for: \.$user) var notificationPrefs: NotificationPrefs?
+    @OptionalChild(for: \.$user) var watchSettings: WatchSettings?
 
     init() {}
 

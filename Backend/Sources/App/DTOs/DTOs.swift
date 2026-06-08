@@ -31,6 +31,21 @@ struct ChangePasswordRequest: Content {
     let newPassword: String
 }
 
+// UC-04: token-based password reset (email flow)
+struct ForgotPasswordRequest: Content {
+    let email: String
+}
+
+struct ForgotPasswordResponse: Content {
+    let message: String
+    let resetToken: String  // returned in dev — in prod this would only be emailed
+}
+
+struct ResetPasswordRequest: Content {
+    let token: String
+    let newPassword: String
+}
+
 // MARK: - User DTOs (UC-16)
 
 struct UserResponse: Content {
@@ -38,6 +53,7 @@ struct UserResponse: Content {
     let firstName: String
     let lastName: String
     let email: String
+    let avatarUrl: String?
     let createdAt: Date?
 }
 
@@ -47,11 +63,21 @@ struct UpdateProfileRequest: Content {
     let email: String?
 }
 
+struct UploadAvatarRequest: Content {
+    let avatarUrl: String   // base64 data URL or remote https URL
+}
+
 // MARK: - Device DTOs (UC-05, UC-15)
 
 struct CreateDeviceRequest: Content {
     let name: String
     let modelCode: String
+}
+
+// UC-05: QR / manual pairing code flow
+struct PairDeviceRequest: Content {
+    let pairingCode: String
+    let name: String?       // optional friendly name; derived from code if omitted
 }
 
 struct DeviceResponse: Content {
@@ -60,6 +86,7 @@ struct DeviceResponse: Content {
     let modelCode: String
     let state: String
     let isActive: Bool
+    let pairingCode: String?
     let lastSeenAt: Date?
 }
 
@@ -87,10 +114,21 @@ struct PresetResponse: Content {
     let mode: String
     let selectedSections: [Int]
     let donenessLevels: [String]
+    let shareCode: String?
     let updatedAt: Date?
 }
 
-// MARK: - Cook Session DTOs (UC-06, UC-07, UC-11)
+// UC-13: share / import
+struct PresetShareResponse: Content {
+    let presetId: UUID
+    let shareCode: String
+}
+
+struct ImportPresetRequest: Content {
+    let code: String
+}
+
+// MARK: - Cook Session DTOs (UC-06, UC-07, UC-10, UC-11)
 
 struct StartCookRequest: Content {
     let deviceId: UUID?
@@ -98,6 +136,7 @@ struct StartCookRequest: Content {
     let mode: String
     let selectedSections: [Int]
     let donenessLevels: [String]
+    let scheduledAt: Date?   // UC-10 scheduled cook — nil means start immediately
 
     func validate() throws {
         guard ["bulk", "separate"].contains(mode) else {
@@ -109,8 +148,17 @@ struct StartCookRequest: Content {
     }
 }
 
+// UC-11 + Watch S14/S15/S13 status transitions
+// Lifecycle: scheduled → preheating → active ⇄ paused → completed | cancelled
 struct UpdateSessionRequest: Content {
-    let status: String   // "completed" | "cancelled"
+    let status: String
+
+    func validate() throws {
+        let valid = ["preheating", "active", "paused", "resumed", "completed", "cancelled"]
+        guard valid.contains(status) else {
+            throw Abort(.badRequest, reason: "status must be one of: \(valid.joined(separator: ", ")).")
+        }
+    }
 }
 
 struct CookSessionResponse: Content {
@@ -120,6 +168,8 @@ struct CookSessionResponse: Content {
     let selectedSections: [Int]
     let donenessLevels: [String]
     let status: String
+    let scheduledAt: Date?
+    let pausedAt: Date?
     let startedAt: Date?
     let completedAt: Date?
 }
@@ -144,4 +194,18 @@ struct UpdateNotificationPrefsRequest: Content {
     let firmwareUpdates: Bool?
     let tipsRecipes: Bool?
     let vestelMarketing: Bool?
+}
+
+// MARK: - Watch Settings DTOs (Watch S20)
+
+struct WatchSettingsResponse: Content {
+    let haptics: Bool
+    let chime: Bool
+    let autoStart: Bool
+}
+
+struct UpdateWatchSettingsRequest: Content {
+    let haptics: Bool?
+    let chime: Bool?
+    let autoStart: Bool?
 }

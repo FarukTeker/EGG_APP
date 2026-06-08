@@ -29,7 +29,7 @@ struct MainTabView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                 .tag(4)
         }
-        .tint(Color.brandRed)
+        .tint(Color.brandYellow)
         .background(Color.bgApp)
     }
 }

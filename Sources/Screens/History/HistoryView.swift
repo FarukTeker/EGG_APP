@@ -41,7 +41,7 @@ struct HistoryTabView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !store.history.isEmpty {
                         Button("Clear") { showClearAlert = true }
-                            .foregroundStyle(Color.brandRed)
+                            .foregroundStyle(Color.brandYellow)
                             .font(.vestelLabel)
                     }
                 }
@@ -60,7 +60,7 @@ private struct HistoryRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(entry.session.cancelled ? Color.brandRed : Color.success)
+                .fill(entry.session.cancelled ? Color.brandYellow : Color.success)
                 .frame(width: 8, height: 8)
                 .padding(.leading, 4)
             VStack(alignment: .leading, spacing: 4) {

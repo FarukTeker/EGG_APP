@@ -10,6 +10,7 @@
 		06EC481EBB99939575533B1B /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AAEF3D9CDFE62D32EA3F4A /* AppStore.swift */; };
 		09C375041FD3B61B6BDA4532 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F18974E6AAD56E05D72965E4 /* DesignSystem.swift */; };
 		0BB43A70421804DB90EBCC5B /* VestelEggCookerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 517B5767607A22B45CCD2C3A /* VestelEggCookerApp.swift */; };
+		0CCAC8BAB9D75EDF59789531 /* Ekran Resmi 2026-06-07 19.53.58.png in Resources */ = {isa = PBXBuildFile; fileRef = 128046EFF0776E0F8491F6D8 /* Ekran Resmi 2026-06-07 19.53.58.png */; };
 		14F4AEBD725AB9DB6DE78BC0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F437B75490D750B50B11DE05 /* SettingsView.swift */; };
 		1F6094E7735BB89AB44BFAC6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6C49AB0B3C051E48E17BAC /* RootView.swift */; };
 		333159A52D4246FA7C70DEE5 /* PresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B442E28F5299CA16E80BB95E /* PresetsView.swift */; };
@@ -26,6 +27,7 @@
 /* Begin PBXFileReference section */
 		0BE19A320E615E5B54943BA2 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		105A52B085A1E65F26EF7499 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		128046EFF0776E0F8491F6D8 /* Ekran Resmi 2026-06-07 19.53.58.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Ekran Resmi 2026-06-07 19.53.58.png"; sourceTree = "<group>"; };
 		392121BC08E1EEBAE83E6717 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		517B5767607A22B45CCD2C3A /* VestelEggCookerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VestelEggCookerApp.swift; sourceTree = "<group>"; };
 		73AAEF3D9CDFE62D32EA3F4A /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 		C3EBD61AFB9964A134237C4E /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				128046EFF0776E0F8491F6D8 /* Ekran Resmi 2026-06-07 19.53.58.png */,
 				F40F6A0620D0DAC2DD278693 /* App */,
 				87809D4C4498927952343F43 /* Design */,
 				EA11825170FDAB65713DE13B /* Models */,
@@ -191,6 +194,7 @@
 			buildConfigurationList = DF5EE994500C4DBE959AE927 /* Build configuration list for PBXNativeTarget "VestelEggCooker" */;
 			buildPhases = (
 				0818DCD66D49F5CBDBB72FDB /* Sources */,
+				8B56DB187F543D70B8F4C771 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -235,6 +239,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8B56DB187F543D70B8F4C771 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0CCAC8BAB9D75EDF59789531 /* Ekran Resmi 2026-06-07 19.53.58.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		0818DCD66D49F5CBDBB72FDB /* Sources */ = {

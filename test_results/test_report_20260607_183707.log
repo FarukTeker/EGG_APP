@@ -1,0 +1,126 @@
+════════════════════════════════════════════════════════════
+ EGG_APP — Vapor Backend Uçtan Uca Endpoint Testi
+ Tarih: 2026-06-07 18:37:07
+ Rastgele kullanıcı: Mehmet Çelik <eggtester1781420823@example.com>
+════════════════════════════════════════════════════════════
+
+[1;36m──────────────────────────────────────────────────────────[0m
+0) HEALTH CHECK — GET /api/health
+[1;32m✔ PASS[0m  [Sunucu sağlık kontrolü]  HTTP 200
+   ↳ Yanıt: {"status":"ok"}
+
+[1;36m──────────────────────────────────────────────────────────[0m
+1) AUTH — Kayıt / Giriş / Şifre işlemleri
+[1;32m✔ PASS[0m  [Kayıt ol (register)]  HTTP 200
+   ↳ Yanıt: {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcmF0aW9uIjoxNzgxNDUxNDI3LjU4OTc1OCwic3ViamVjdCI6IjU5MjhCMUI3LUI2NDItNDlGNy1CQThDLTVGODVGQUREOTlEOCIsInVzZXJJRCI6IjU5MjhCMUI3LUI2NDItNDlGNy1CQThDLTVGODVGQUREOTlEOCJ9.orN3PB0E2ptaun8eCPFFvQMHverE5tIOIJmVTjh3vCU","userId":"5928B1B7-B642-49F7-BA8C-5F85FADD99D8","email":"eggtester1781420823@example.com"}
+   → Alınan JWT: eyJhbGciOiJIUzI1NiIsInR5...
+[1;32m✔ PASS[0m  [Aynı e-posta ile tekrar kayıt (çakışma beklenir)]  HTTP 409
+   ↳ Yanıt: {"error":true,"reason":"Email already registered."}
+[1;32m✔ PASS[0m  [Giriş yap (login)]  HTTP 200
+   ↳ Yanıt: {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcmF0aW9uIjoxNzgxNDUxNDI4LjAyNDY4NSwic3ViamVjdCI6IjU5MjhCMUI3LUI2NDItNDlGNy1CQThDLTVGODVGQUREOTlEOCIsInVzZXJJRCI6IjU5MjhCMUI3LUI2NDItNDlGNy1CQThDLTVGODVGQUREOTlEOCJ9.CWGi25L8gnYS3BgXddIsMO3fIgehRGfTfdO42_CPTyE","userId":"5928B1B7-B642-49F7-BA8C-5F85FADD99D8","email":"eggtester1781420823@example.com"}
+[1;32m✔ PASS[0m  [Yanlış şifre ile giriş (yetkisiz beklenir)]  HTTP 401
+   ↳ Yanıt: {"error":true,"reason":"Invalid email or password."}
+[1;32m✔ PASS[0m  [Şifremi unuttum (forgot-password)]  HTTP 200
+   ↳ Yanıt: {"message":"If that email is registered, a reset link has been sent.","resetToken":"ed31733d1313464f944ceab29bb59d50"}
+   → Alınan reset token: ed31733d1313464f...
+[1;32m✔ PASS[0m  [Şifre sıfırla (reset-password)]  HTTP 200
+   ↳ Yanıt: 
+[1;32m✔ PASS[0m  [Yeni şifre ile giriş]  HTTP 200
+   ↳ Yanıt: {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcmF0aW9uIjoxNzgxNDUxNDI5LjI2MDg4NzEsInN1YmplY3QiOiI1OTI4QjFCNy1CNjQyLTQ5RjctQkE4Qy01Rjg1RkFERDk5RDgiLCJ1c2VySUQiOiI1OTI4QjFCNy1CNjQyLTQ5RjctQkE4Qy01Rjg1RkFERDk5RDgifQ.PUyZfHF3uakk8guK09Kn_cS8ac5xWtcJ8Ygcr8nH_jQ","userId":"5928B1B7-B642-49F7-BA8C-5F85FADD99D8","email":"eggtester1781420823@example.com"}
+[1;32m✔ PASS[0m  [Şifre değiştir (change-password)]  HTTP 200
+   ↳ Yanıt: 
+[1;32m✔ PASS[0m  [Tekrar giriş (final token)]  HTTP 200
+   ↳ Yanıt: {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcmF0aW9uIjoxNzgxNDUxNDMwLjQxNjUxNywic3ViamVjdCI6IjU5MjhCMUI3LUI2NDItNDlGNy1CQThDLTVGODVGQUREOTlEOCIsInVzZXJJRCI6IjU5MjhCMUI3LUI2NDItNDlGNy1CQThDLTVGODVGQUREOTlEOCJ9.lAC_I9llr8tbiw-f6JHbP4jLP4dJ3EtqDVzIU8Pa0tk","userId":"5928B1B7-B642-49F7-BA8C-5F85FADD99D8","email":"eggtester1781420823@example.com"}
+   → Kullanılacak nihai JWT: eyJhbGciOiJIUzI1NiIsInR5...
+
+[1;36m──────────────────────────────────────────────────────────[0m
+2) PROFILE — /users/me
+[1;32m✔ PASS[0m  [Profili getir (getProfile)]  HTTP 200
+   ↳ Yanıt: {"id":"5928B1B7-B642-49F7-BA8C-5F85FADD99D8","firstName":"Mehmet","lastName":"Çelik","createdAt":"2026-06-07T15:37:07Z","email":"eggtester1781420823@example.com"}
+[1;32m✔ PASS[0m  [Profili güncelle (updateProfile)]  HTTP 200
+   ↳ Yanıt: {"id":"5928B1B7-B642-49F7-BA8C-5F85FADD99D8","firstName":"Mehmet-Guncel","lastName":"Çelik","createdAt":"2026-06-07T15:37:07Z","email":"eggtester1781420823@example.com"}
+[1;32m✔ PASS[0m  [Avatar yükle (uploadAvatar)]  HTTP 200
+   ↳ Yanıt: {"id":"5928B1B7-B642-49F7-BA8C-5F85FADD99D8","firstName":"Mehmet-Guncel","avatarUrl":"https:\/\/example.com\/avatars\/1781420823.png","lastName":"Çelik","createdAt":"2026-06-07T15:37:07Z","email":"eggtester1781420823@example.com"}
+[1;32m✔ PASS[0m  [Profili tokensız iste (yetkisiz beklenir)]  HTTP 401
+   ↳ Yanıt: {"error":true,"reason":"Unauthorized"}
+
+[1;36m──────────────────────────────────────────────────────────[0m
+3) DEVICES — Cihaz işlemleri
+[1;32m✔ PASS[0m  [Cihaz oluştur (create)]  HTTP 200
+   ↳ Yanıt: {"id":"AD0B727D-F84A-4521-9E15-4E4C1BEACC1C","state":"active","modelCode":"VEC-1000","isActive":true,"name":"MutfakCihazi-1781420823"}
+   → Oluşturulan cihaz ID: AD0B727D-F84A-4521-9E15-4E4C1BEACC1C
+[1;32m✔ PASS[0m  [Cihazları listele (list)]  HTTP 200
+   ↳ Yanıt: [{"id":"AD0B727D-F84A-4521-9E15-4E4C1BEACC1C","state":"active","modelCode":"VEC-1000","isActive":true,"name":"MutfakCihazi-1781420823"}]
+[1;32m✔ PASS[0m  [Cihaz eşleştir (pair — QR/manuel kod)]  HTTP 200
+   ↳ Yanıt: {"id":"B2368E13-0B30-4F95-8C97-3674294989ED","state":"active","pairingCode":"PAIR-1781420823","modelCode":"PAIR-1781420823","isActive":true,"name":"EslesenCihaz-1781420823"}
+[1;32m✔ PASS[0m  [Cihaza ping at (ping/lastSeenAt güncelle)]  HTTP 200
+   ↳ Yanıt: 
+[1;32m✔ PASS[0m  [Cihazı sil (delete)]  HTTP 204
+   ↳ Yanıt: 
+[1;32m✔ PASS[0m  [Var olmayan cihaza ping (404 beklenir)]  HTTP 404
+   ↳ Yanıt: {"error":true,"reason":"Not Found"}
+
+[1;36m──────────────────────────────────────────────────────────[0m
+4) PRESETS — Hazır ayar işlemleri
+[1;32m✔ PASS[0m  [Preset oluştur (create)]  HTTP 200
+   ↳ Yanıt: {"id":"B227B77D-14FD-4D7F-8A7B-E4B49CDA6497","selectedSections":[1,2,3],"donenessLevels":["medium","hard","medium"],"updatedAt":"2026-06-07T15:37:11Z","mode":"bulk","name":"HazirAyar-1781420823"}
+   → Oluşturulan preset ID: B227B77D-14FD-4D7F-8A7B-E4B49CDA6497
+[1;32m✔ PASS[0m  [Presetleri listele (list)]  HTTP 200
+   ↳ Yanıt: [{"id":"B227B77D-14FD-4D7F-8A7B-E4B49CDA6497","selectedSections":[1,2,3],"donenessLevels":["medium","hard","medium"],"updatedAt":"2026-06-07T15:37:11Z","mode":"bulk","name":"HazirAyar-1781420823"}]
+[1;32m✔ PASS[0m  [Preset güncelle (update)]  HTTP 200
+   ↳ Yanıt: {"id":"B227B77D-14FD-4D7F-8A7B-E4B49CDA6497","selectedSections":[1,2],"donenessLevels":["hard","soft"],"updatedAt":"2026-06-07T15:37:11Z","mode":"bulk","name":"HazirAyar-1781420823-v2"}
+[1;32m✔ PASS[0m  [Paylaşım kodu üret/getir (share)]  HTTP 200
+   ↳ Yanıt: {"presetId":"B227B77D-14FD-4D7F-8A7B-E4B49CDA6497","shareCode":"HAZIR-AYA-2649"}
+   → Paylaşım kodu: HAZIR-AYA-2649
+[1;32m✔ PASS[0m  [Paylaşım koduyla içe aktar (import)]  HTTP 200
+   ↳ Yanıt: {"id":"33DD5569-F895-4823-ACFD-FB099FA67F30","selectedSections":[1,2],"donenessLevels":["hard","soft"],"updatedAt":"2026-06-07T15:37:11Z","mode":"bulk","name":"HazirAyar-1781420823-v2 (imported)"}
+[1;32m✔ PASS[0m  [Geçersiz kodla içe aktarma (404 beklenir)]  HTTP 404
+   ↳ Yanıt: {"error":true,"reason":"No preset found with that code."}
+[1;32m✔ PASS[0m  [Preset sil (delete)]  HTTP 204
+   ↳ Yanıt: 
+
+[1;36m──────────────────────────────────────────────────────────[0m
+5) COOK SESSIONS — Pişirme oturumları
+[1;32m✔ PASS[0m  [(yardımcı) İkinci cihaz oluştur]  HTTP 200
+   ↳ Yanıt: {"id":"2A323F64-F8AD-46BF-82AC-798C8AD4EC30","state":"active","modelCode":"VEC-1000","isActive":true,"name":"PisirmeCihazi-1781420823"}
+[1;32m✔ PASS[0m  [Pişirme başlat (startCook)]  HTTP 200
+   ↳ Yanıt: {"donenessLevels":["medium","hard","medium"],"selectedSections":[1,2,3],"presetName":"HazirAyar-1781420823","startedAt":"2026-06-07T15:37:11Z","id":"D533DB71-037B-47C6-9832-F82DEBB71D9D","status":"active","mode":"bulk"}
+   → Oluşturulan oturum ID: D533DB71-037B-47C6-9832-F82DEBB71D9D
+[1;32m✔ PASS[0m  [Pişirme geçmişini listele (history)]  HTTP 200
+   ↳ Yanıt: [{"donenessLevels":["medium","hard","medium"],"selectedSections":[1,2,3],"presetName":"HazirAyar-1781420823","startedAt":"2026-06-07T15:37:11Z","id":"D533DB71-037B-47C6-9832-F82DEBB71D9D","status":"active","mode":"bulk"}]
+[1;32m✔ PASS[0m  [Oturum durumunu güncelle → preheating]  HTTP 200
+   ↳ Yanıt: {"donenessLevels":["medium","hard","medium"],"selectedSections":[1,2,3],"presetName":"HazirAyar-1781420823","startedAt":"2026-06-07T15:37:11Z","id":"D533DB71-037B-47C6-9832-F82DEBB71D9D","status":"preheating","mode":"bulk"}
+[1;32m✔ PASS[0m  [Oturum durumunu güncelle → active]  HTTP 200
+   ↳ Yanıt: {"donenessLevels":["medium","hard","medium"],"selectedSections":[1,2,3],"presetName":"HazirAyar-1781420823","startedAt":"2026-06-07T15:37:11Z","id":"D533DB71-037B-47C6-9832-F82DEBB71D9D","status":"active","mode":"bulk"}
+[1;32m✔ PASS[0m  [Oturum durumunu güncelle → paused]  HTTP 200
+   ↳ Yanıt: {"donenessLevels":["medium","hard","medium"],"pausedAt":"2026-06-07T15:37:11Z","selectedSections":[1,2,3],"presetName":"HazirAyar-1781420823","startedAt":"2026-06-07T15:37:11Z","id":"D533DB71-037B-47C6-9832-F82DEBB71D9D","status":"paused","mode":"bulk"}
+[1;32m✔ PASS[0m  [Oturum durumunu güncelle → resumed]  HTTP 200
+   ↳ Yanıt: {"donenessLevels":["medium","hard","medium"],"selectedSections":[1,2,3],"presetName":"HazirAyar-1781420823","startedAt":"2026-06-07T15:37:11Z","id":"D533DB71-037B-47C6-9832-F82DEBB71D9D","status":"active","mode":"bulk"}
+[1;32m✔ PASS[0m  [Oturum durumunu güncelle → completed]  HTTP 200
+   ↳ Yanıt: {"donenessLevels":["medium","hard","medium"],"selectedSections":[1,2,3],"presetName":"HazirAyar-1781420823","completedAt":"2026-06-07T15:37:11Z","startedAt":"2026-06-07T15:37:11Z","id":"D533DB71-037B-47C6-9832-F82DEBB71D9D","status":"completed","mode":"bulk"}
+[1;32m✔ PASS[0m  [Geçersiz durum değeri gönder (400 beklenir)]  HTTP 400
+   ↳ Yanıt: {"error":true,"reason":"status must be one of: preheating, active, paused, resumed, completed, cancelled."}
+[1;32m✔ PASS[0m  [Planlanmış pişirme oluştur (scheduledAt dolu)]  HTTP 200
+   ↳ Yanıt: {"donenessLevels":["soft","medium","hard","soft","medium","hard"],"selectedSections":[1,2,3,4,5,6],"presetName":"HazirAyar-1781420823","scheduledAt":"2026-06-07T17:37:11Z","startedAt":"2026-06-07T15:37:11Z","id":"DD5C6424-5765-4996-BB63-A10E8B083CAB","status":"scheduled","mode":"separate"}
+[1;32m✔ PASS[0m  [Pişirme geçmişini temizle (clearHistory)]  HTTP 204
+   ↳ Yanıt: 
+
+[1;36m──────────────────────────────────────────────────────────[0m
+6) NOTIFICATIONS — Bildirim tercihleri
+[1;32m✔ PASS[0m  [Bildirim tercihlerini getir (getPrefs)]  HTTP 200
+   ↳ Yanıt: {"offlineAlert":true,"vestelMarketing":false,"cookComplete":true,"scheduledStart":false,"fiveMinReminder":true,"tipsRecipes":false,"firmwareUpdates":true}
+[1;32m✔ PASS[0m  [Bildirim tercihlerini güncelle (updatePrefs — rastgele bool'lar)]  HTTP 200
+   ↳ Yanıt: {"offlineAlert":false,"vestelMarketing":true,"cookComplete":true,"scheduledStart":true,"fiveMinReminder":false,"tipsRecipes":false,"firmwareUpdates":true}
+
+[1;36m──────────────────────────────────────────────────────────[0m
+7) WATCH SETTINGS — Akıllı saat ayarları
+[1;32m✔ PASS[0m  [Saat ayarlarını getir (get)]  HTTP 200
+   ↳ Yanıt: {"chime":true,"haptics":true,"autoStart":false}
+[1;32m✔ PASS[0m  [Saat ayarlarını güncelle (update — rastgele bool'lar)]  HTTP 200
+   ↳ Yanıt: {"chime":true,"haptics":true,"autoStart":false}
+
+[1;36m──────────────────────────────────────────────────────────[0m
+TEST SONUCU ÖZETİ
+  Toplam: 33   ✔ Başarılı: 33   ✘ Başarısız: 0
+
+[1;36m──────────────────────────────────────────────────────────[0m

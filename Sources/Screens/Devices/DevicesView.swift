@@ -25,7 +25,7 @@ struct DevicesTabView: View {
                     Button {
                         showPairing = true
                     } label: {
-                        Image(systemName: "plus").foregroundStyle(Color.brandRed)
+                        Image(systemName: "plus").foregroundStyle(Color.brandYellow)
                     }
                 }
             }
@@ -50,7 +50,7 @@ struct DevicesTabView: View {
                         )
                         if store.activeDevice?.id == device.id {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.brandRed)
+                                .foregroundStyle(Color.brandYellow)
                         }
                     }
                 }
