@@ -365,13 +365,13 @@ struct VEggGrid: View {
     @Binding var selected: Set<Int>
     var interactive: Bool = true
     var completedSections: Set<Int> = []
-    /// When provided, each active section's label becomes a Soft/Medium/Hard dropdown.
+    /// When provided, each active section's label becomes a Soft/Rare/Medium/Hard dropdown.
     /// In bulk mode picking a level applies it to all sections.
     var doneness: Binding<[String]>? = nil
     var bulkMode: Bool = false
 
     let sections = ["A", "B", "C"]
-    private let options = ["Soft", "Medium", "Hard"]
+    private let options = ["Soft", "Rare", "Medium", "Hard"]
 
     private func sectionHasEgg(_ i: Int) -> Bool {
         selected.contains(i * 2) || selected.contains(i * 2 + 1)
@@ -519,7 +519,7 @@ private struct EggOval: View {
 struct VDonenessBulk: View {
     @Binding var active: String
     var caption: String = "All blocks · same level"
-    let options = ["Soft", "Medium", "Hard"]
+    let options = ["Soft", "Rare", "Medium", "Hard"]
 
     var body: some View {
         VStack(spacing: 8) {
@@ -551,7 +551,7 @@ struct VDonenessSeparate: View {
     var completedSections: Set<Int> = []
     var caption: String = "Per block · own level"
     let sections = ["A", "B", "C"]
-    let options = ["Soft", "Medium", "Hard"]
+    let options = ["Soft", "Rare", "Medium", "Hard"]
 
     private func sectionHasEgg(_ i: Int) -> Bool {
         selectedEggs.contains(i * 2) || selectedEggs.contains(i * 2 + 1)

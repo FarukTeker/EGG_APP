@@ -17,6 +17,13 @@ final class AppStore: ObservableObject {
     @Published var autoDetectEggs: Bool = true
     @Published var defaultStyle: String = "Medium"
     @Published var isDarkMode: Bool = true
+    // Accessibility
+    @Published var textSize: Double = 0.5
+    @Published var flashNotifications: Bool = false
+    @Published var animationsEnabled: Bool = true
+    // Privacy & Data
+    @Published var shareDataWithVestel: Bool = false
+    @Published var rememberMe: Bool = true
 
     // MARK: - Devices (UC-05, UC-15)
     @Published var devices: [EggDevice] = []
@@ -178,6 +185,7 @@ final class AppStore: ObservableObject {
         let maxLevel = levels.max { donenessOrder($0) < donenessOrder($1) } ?? "Medium"
         switch maxLevel {
         case "Soft":   return 4 * 60
+        case "Rare":   return 5 * 60
         case "Medium": return 6 * 60
         case "Hard":   return 9 * 60
         default:       return 6 * 60
@@ -185,7 +193,7 @@ final class AppStore: ObservableObject {
     }
 
     private func donenessOrder(_ level: String) -> Int {
-        switch level { case "Soft": return 1; case "Medium": return 2; case "Hard": return 3; default: return 0 }
+        switch level { case "Soft": return 1; case "Rare": return 2; case "Medium": return 3; case "Hard": return 4; default: return 0 }
     }
 
     // MARK: - Scheduled Cooks

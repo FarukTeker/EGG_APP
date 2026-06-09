@@ -404,7 +404,7 @@ private struct ScheduleRow: View {
     }
 }
 
-// MARK: - Schedule Editor Sheet
+// MARK: - Schedule Editor Sheet (Figma: Add Preset)
 
 struct ScheduleEditorSheet: View {
     @EnvironmentObject private var store: AppStore
@@ -414,12 +414,18 @@ struct ScheduleEditorSheet: View {
     var preselectedPreset: EggPreset? = nil
     var onSave: (ScheduledCook) -> Void
 
-    @State private var scheduleType: ScheduledCook.ScheduleType = .oneTime
+    @State private var selectedPreset: EggPreset? = nil
     @State private var fireTime: Date
     @State private var oneTimeDate: Date
-    @State private var weekdays: [Int] = [2, 5]   // Mon, Thu default
-    @State private var selectedPreset: EggPreset? = nil
-    @State private var showPresetPicker = false
+
+    // Expand states
+    @State private var showDatePicker = false
+    @State private var showTimePicker = false
+    @State private var showPresetList = false
+
+    // Cook config (applied from preset or manual)
+    @State private var cookMode: CookMode = .bulk
+    @State private var selectedEggs: Set<Int> = [0, 1, 2, 3, 4, 5]
 
     init(schedule: ScheduledCook? = nil,
          preselectedPreset: EggPreset? = nil,
@@ -435,15 +441,17 @@ struct ScheduleEditorSheet: View {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
 
         if let s = schedule {
-            _scheduleType  = State(initialValue: s.scheduleType)
-            _fireTime      = State(initialValue: s.fireTime)
-            _oneTimeDate   = State(initialValue: s.oneTimeDate ?? tomorrow)
-            _weekdays      = State(initialValue: s.weekdays)
+            _fireTime       = State(initialValue: s.fireTime)
+            _oneTimeDate    = State(initialValue: s.oneTimeDate ?? tomorrow)
             _selectedPreset = State(initialValue: s.preset)
+            _cookMode       = State(initialValue: s.preset.mode)
+            _selectedEggs   = State(initialValue: Set(s.preset.selectedEggs))
         } else {
-            _fireTime      = State(initialValue: defaultTime)
-            _oneTimeDate   = State(initialValue: tomorrow)
+            _fireTime       = State(initialValue: defaultTime)
+            _oneTimeDate    = State(initialValue: tomorrow)
             _selectedPreset = State(initialValue: preselectedPreset)
+            _cookMode       = State(initialValue: preselectedPreset?.mode ?? .bulk)
+            _selectedEggs   = State(initialValue: Set(preselectedPreset?.selectedEggs ?? [0,1,2,3,4,5]))
         }
     }
 
@@ -451,72 +459,64 @@ struct ScheduleEditorSheet: View {
         ZStack {
             Color.bgApp.ignoresSafeArea()
             VStack(spacing: 0) {
-                VNavHeader(title: schedule == nil ? "New Schedule" : "Edit Schedule", onBack: { dismiss() })
+                VNavHeader(title: schedule == nil ? "Add Preset" : "Edit Schedule",
+                           onBack: { dismiss() })
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(spacing: 12) {
 
-                        // Preset picker
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Preset").font(.vestelCaption).foregroundStyle(Color.fg3)
-                            Button { showPresetPicker = true } label: {
-                                HStack {
-                                    Text(selectedPreset?.name ?? "Choose a preset…")
-                                        .font(.vestelBody)
-                                        .foregroundStyle(selectedPreset == nil ? Color.fg3 : Color.fg1)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 12)).foregroundStyle(Color.fg3)
-                                }
-                                .padding(.horizontal, 16).padding(.vertical, 14)
+                        // Select date
+                        expandButton(
+                            title: showDatePicker
+                                ? oneTimeDate.formatted(.dateTime.day().month(.abbreviated).year())
+                                : "Select date",
+                            isExpanded: showDatePicker
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showDatePicker.toggle()
+                                if showDatePicker { showTimePicker = false; showPresetList = false }
+                            }
+                        }
+
+                        if showDatePicker {
+                            DatePicker("", selection: $oneTimeDate, in: Date()..., displayedComponents: .date)
+                                .datePickerStyle(.graphical)
+                                .tint(Color.brandYellow)
+                                .padding(.horizontal, 16)
                                 .background(Color.bgSurface1)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
-                            }
-                        }
-                        .padding(.horizontal, 24)
-
-                        // Schedule type
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Repeat").font(.vestelCaption).foregroundStyle(Color.fg3)
                                 .padding(.horizontal, 24)
-                            VSeg(options: ScheduledCook.ScheduleType.allCases.map { $0.rawValue },
-                                 active: Binding(
-                                    get: { scheduleType.rawValue },
-                                    set: { scheduleType = ScheduledCook.ScheduleType(rawValue: $0) ?? .oneTime }
-                                 ))
-                                .padding(.horizontal, 24)
+                                .colorScheme(.dark)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
-                        // Date (one-time only)
-                        if scheduleType == .oneTime {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Date").font(.vestelCaption).foregroundStyle(Color.fg3)
-                                    .padding(.horizontal, 24)
-                                DatePicker("", selection: $oneTimeDate, in: Date()..., displayedComponents: .date)
-                                    .datePickerStyle(.graphical)
-                                    .tint(Color.brandYellow)
-                                    .padding(.horizontal, 16)
-                                    .background(Color.bgSurface1)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                                    .padding(.horizontal, 24)
-                                    .colorScheme(.dark)
+                        // Select time
+                        expandButton(
+                            title: showTimePicker
+                                ? fireTime.formatted(.dateTime.hour().minute())
+                                : "Select time",
+                            isExpanded: showTimePicker
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showTimePicker.toggle()
+                                if showTimePicker { showDatePicker = false; showPresetList = false }
                             }
                         }
 
-                        // Weekdays (weekly only)
-                        if scheduleType == .weekly {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Days").font(.vestelCaption).foregroundStyle(Color.fg3)
-                                    .padding(.horizontal, 24)
-                                WeekdaySelector(selected: $weekdays)
-                                    .padding(.horizontal, 24)
+                        if showTimePicker {
+                            HStack {
+                                Text("Time")
+                                    .font(.vestelCaption).foregroundStyle(Color.fg3)
+                                Spacer()
+                                Text(fireTime.formatted(.dateTime.hour().minute()))
+                                    .font(.vestelBody).foregroundStyle(Color.fg1)
+                                    .padding(.horizontal, 16).padding(.vertical, 8)
+                                    .background(Color.bgSurface2)
+                                    .clipShape(Capsule())
                             }
-                        }
+                            .padding(.horizontal, 24)
+                            .transition(.opacity)
 
-                        // Time
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Time").font(.vestelCaption).foregroundStyle(Color.fg3)
-                                .padding(.horizontal, 24)
                             DatePicker("", selection: $fireTime, displayedComponents: .hourAndMinute)
                                 .datePickerStyle(.wheel)
                                 .labelsHidden()
@@ -524,33 +524,114 @@ struct ScheduleEditorSheet: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.horizontal, 24)
                                 .colorScheme(.dark)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
+
+                        // Use a preset
+                        expandButton(
+                            title: selectedPreset?.name ?? "Use a preset",
+                            isExpanded: showPresetList
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showPresetList.toggle()
+                                if showPresetList { showDatePicker = false; showTimePicker = false }
+                            }
+                        }
+
+                        if showPresetList {
+                            VStack(spacing: 0) {
+                                ForEach(store.presets) { preset in
+                                    Button {
+                                        selectedPreset = preset
+                                        cookMode = preset.mode
+                                        selectedEggs = Set(preset.selectedEggs)
+                                        withAnimation { showPresetList = false }
+                                    } label: {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text(preset.name)
+                                                    .font(.vestelBody)
+                                                    .foregroundStyle(selectedPreset?.id == preset.id ? Color.brandYellow : Color.fg1)
+                                                Text(preset.summaryText)
+                                                    .font(.vestelCaption).foregroundStyle(Color.fg3)
+                                            }
+                                            Spacer()
+                                            if selectedPreset?.id == preset.id {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundStyle(Color.brandYellow)
+                                            }
+                                        }
+                                        .padding(.horizontal, 20).padding(.vertical, 12)
+                                        .background(selectedPreset?.id == preset.id ? Color.brandYellow.opacity(0.08) : Color.clear)
+                                    }
+                                    Divider().background(Color.line1)
+                                }
+                            }
+                            .background(Color.bgSurface1)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .padding(.horizontal, 24)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
+                        // Bulk / Separate toggle
+                        VSeg(options: ["Bulk", "Separate"],
+                             active: Binding(
+                                get: { cookMode == .bulk ? "Bulk" : "Separate" },
+                                set: { cookMode = $0 == "Bulk" ? .bulk : .separate }
+                             ))
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
+
+                        // Egg grid (read-only binding to local state)
+                        VEggGrid(selected: $selectedEggs,
+                                 doneness: .constant(["Medium","Medium","Medium"]),
+                                 bulkMode: cookMode == .bulk)
+                            .padding(.horizontal, 24)
                     }
                     .padding(.vertical, 16)
+                    .animation(.easeInOut(duration: 0.2), value: showDatePicker)
+                    .animation(.easeInOut(duration: 0.2), value: showTimePicker)
+                    .animation(.easeInOut(duration: 0.2), value: showPresetList)
                 }
 
-                VBtn(title: "Save Schedule") {
-                    guard let preset = selectedPreset else { return }
+                // Set button
+                VBtn(title: "Set") {
+                    let preset = selectedPreset ?? EggPreset(
+                        name: "Scheduled cook",
+                        mode: cookMode,
+                        selectedEggs: Array(selectedEggs).sorted(),
+                        donenessLevels: ["Medium","Medium","Medium"]
+                    )
                     let s = ScheduledCook(
                         id: schedule?.id ?? UUID(),
                         preset: preset,
-                        scheduleType: scheduleType,
+                        scheduleType: .oneTime,
                         fireTime: fireTime,
-                        oneTimeDate: scheduleType == .oneTime ? oneTimeDate : nil,
-                        weekdays: scheduleType == .weekly ? weekdays : [],
+                        oneTimeDate: oneTimeDate,
+                        weekdays: [],
                         isEnabled: true)
                     onSave(s)
                     dismiss()
                 }
-                .disabled(selectedPreset == nil || (scheduleType == .weekly && weekdays.isEmpty))
                 .padding(.horizontal, 24).padding(.bottom, 40)
             }
         }
-        .sheet(isPresented: $showPresetPicker) {
-            PresetPickerForSchedule(selected: $selectedPreset)
+    }
+
+    private func expandButton(title: String, isExpanded: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.vestelButton)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(isExpanded ? Color.brandYellow.opacity(0.8) : Color.brandYellow)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
         }
+        .padding(.horizontal, 24)
     }
 }
+
 
 // MARK: - Preset picker for schedule editor
 

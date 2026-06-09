@@ -90,10 +90,10 @@ struct MainCookView: View {
     }
 
     private func donenessTime(_ level: String) -> Int {
-        switch level { case "Soft": return 4; case "Hard": return 9; default: return 6 }
+        switch level { case "Soft": return 4; case "Rare": return 5; case "Medium": return 6; case "Hard": return 9; default: return 6 }
     }
     private func donenessOrder(_ level: String) -> Int {
-        switch level { case "Soft": return 1; case "Medium": return 2; case "Hard": return 3; default: return 0 }
+        switch level { case "Soft": return 1; case "Rare": return 2; case "Medium": return 3; case "Hard": return 4; default: return 0 }
     }
     private func timeStr(_ seconds: Int) -> String {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
@@ -157,9 +157,10 @@ struct EggStyleView: View {
 
     struct Style { let name: String; let subtitle: String; let icon: String }
     let styles: [Style] = [
-        Style(name: "Soft",   subtitle: "Runny yolk · 4 min",  icon: "circle"),
-        Style(name: "Medium", subtitle: "Jammy yolk · 6 min",  icon: "circle.lefthalf.filled"),
-        Style(name: "Hard",   subtitle: "Fully set · 9 min",   icon: "circle.fill")
+        Style(name: "Soft",   subtitle: "Runny yolk · 4 min",         icon: "circle"),
+        Style(name: "Rare",   subtitle: "Barely set yolk · 5 min",    icon: "circle.dotted"),
+        Style(name: "Medium", subtitle: "Jammy yolk · 6 min",         icon: "circle.lefthalf.filled"),
+        Style(name: "Hard",   subtitle: "Fully set · 9 min",          icon: "circle.fill")
     ]
 
     var body: some View {
@@ -492,16 +493,17 @@ struct NoEggsView: View {
 // MARK: - Phase helpers (file-private)
 
 private func phaseDonenessSeconds(_ level: String) -> Int {
-    switch level { case "Soft": return 240; case "Hard": return 540; default: return 360 }
+    switch level { case "Soft": return 240; case "Rare": return 300; case "Medium": return 360; case "Hard": return 540; default: return 360 }
 }
 
 private func phaseDonenessOrder(_ level: String) -> Int {
-    switch level { case "Soft": return 1; case "Hard": return 3; default: return 2 }
+    switch level { case "Soft": return 1; case "Rare": return 2; case "Medium": return 3; case "Hard": return 4; default: return 3 }
 }
 
 private func phaseLevelColor(_ level: String) -> Color {
     switch level {
     case "Soft":   return .info          // blue — fastest
+    case "Rare":   return Color(hex: "26C4C4")  // teal
     case "Medium": return .accentOrange  // orange
     case "Hard":   return .brandRed      // red — slowest
     default:       return .accentOrange

@@ -145,6 +145,10 @@ struct NotificationPrefs: Codable {
     var firmwareUpdates: Bool = true
     var tipsRecipes: Bool = false
     var vestelMarketing: Bool = false
+    // Figma fields
+    var pushNotifications: Bool = true
+    var cleaningReminders: Bool = false
+    var promotionalMessages: Bool = false
 }
 
 // MARK: - App Language
