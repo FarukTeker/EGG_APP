@@ -4,8 +4,10 @@ import SwiftUI
 
 struct MainCookView: View {
     @EnvironmentObject private var store: AppStore
-    @State private var showEggStyle = false
-    @State private var showPresetPicker = false
+    @State private var showSchedule = false
+    @State private var scheduleConfirm: String? = nil
+
+    private var canStart: Bool { !store.selectedEggs.isEmpty }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,15 +15,22 @@ struct MainCookView: View {
 
             ScrollView {
                 VStack(spacing: 18) {
-                    // Ring timer (idle state)
+                    // Ring timer (idle state) — enlarged to match Figma
                     let activeLevels = (0..<3)
                         .filter { store.selectedEggs.contains($0 * 2) || store.selectedEggs.contains($0 * 2 + 1) }
                         .map { store.donenessLevels[$0] }
                     let donenessMin = store.cookMode == .bulk
                         ? donenessTime(store.donenessLevels[0])
                         : donenessTime(activeLevels.max(by: { donenessOrder($0) < donenessOrder($1) }) ?? "Medium")
-                    VRing(big: timeStr(donenessMin * 60), sub: "until done", progress: 0)
-                        .padding(.top, 8)
+                    VRing(big: timeStr(donenessMin * 60), sub: "until done", progress: 0, radius: 92)
+                        .padding(.top, 12)
+
+                    // Schedule confirmation (auto-hides)
+                    if let msg = scheduleConfirm {
+                        VBanner(message: "Cook scheduled", detail: msg, tone: .success)
+                            .padding(.horizontal, 24)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
 
                     // Low water warning
                     let maxLevel = (store.cookMode == .bulk ? [store.donenessLevels[0]] : activeLevels)
@@ -41,80 +50,43 @@ struct MainCookView: View {
                     ))
                         .padding(.horizontal, 24)
 
-                    // Egg Grid
-                    VEggGrid(selected: $store.selectedEggs)
+                    // Egg Grid — hardness picked via the per-compartment label dropdown
+                    VEggGrid(selected: $store.selectedEggs,
+                             doneness: $store.donenessLevels,
+                             bulkMode: store.cookMode == .bulk)
                         .padding(.horizontal, 24)
-
-                    // Doneness
-                    if store.cookMode == .bulk {
-                        VDonenessBulk(active: Binding(
-                            get: { store.donenessLevels[0] },
-                            set: { v in store.donenessLevels = [v, v, v] }
-                        ), caption: "All blocks · same level")
-                        .padding(.horizontal, 24)
-                    } else {
-                        VDonenessSeparate(levels: $store.donenessLevels,
-                                          selectedEggs: store.selectedEggs,
-                                          caption: "Per block · own level")
-                        .padding(.horizontal, 24)
-                    }
-
-                    // Preset row
-                    Button {
-                        showPresetPicker = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "list.bullet.rectangle")
-                                .foregroundStyle(Color.fg3)
-                            Text("Use a preset")
-                                .font(.vestelBody)
-                                .foregroundStyle(Color.fg2)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Color.fg3)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .background(Color.bgSurface1)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .padding(.horizontal, 24)
-                    }
-
-                    // Egg style shortcut
-                    Button {
-                        showEggStyle = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "circle.hexagongrid.fill")
-                                .foregroundStyle(Color.fg3)
-                            Text("How do you like them?")
-                                .font(.vestelBody)
-                                .foregroundStyle(Color.fg2)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Color.fg3)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
-                        .background(Color.bgSurface1)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .padding(.horizontal, 24)
-                    }
                 }
                 .padding(.bottom, 20)
             }
 
-            VBtn(title: "Start") {
-                store.startCook()
+            // Bottom action bar: Schedule (hourglass) + Start
+            HStack(spacing: 12) {
+                Button { showSchedule = true } label: {
+                    Image(systemName: "hourglass")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(canStart ? .white : Color.fgDisabled)
+                        .frame(width: 52, height: 52)
+                        .background(canStart ? Color.brandYellow : Color.bgSurface2)
+                        .clipShape(Circle())
+                }
+                .disabled(!canStart)
+
+                VBtn(title: "Start") { store.startCook() }
+                    .opacity(canStart ? 1 : 0.5)
+                    .disabled(!canStart)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
         }
         .background(Color.bgApp.ignoresSafeArea())
-        .sheet(isPresented: $showEggStyle) { EggStyleView() }
-        .sheet(isPresented: $showPresetPicker) { PresetPickerSheet() }
+        .sheet(isPresented: $showSchedule) {
+            ScheduleCookSheet { confirmation in
+                withAnimation { scheduleConfirm = confirmation }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    withAnimation { scheduleConfirm = nil }
+                }
+            }
+        }
     }
 
     private func donenessTime(_ level: String) -> Int {
@@ -125,6 +97,54 @@ struct MainCookView: View {
     }
     private func timeStr(_ seconds: Int) -> String {
         String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+// MARK: - Schedule Cook Sheet (next-24h, one-time)
+
+struct ScheduleCookSheet: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var time = Date()
+    var onScheduled: (String) -> Void
+
+    var body: some View {
+        ZStack {
+            Color.bgApp.ignoresSafeArea()
+            VStack(spacing: 0) {
+                VNavHeader(title: "Schedule cook", onBack: { dismiss() })
+
+                Text("Cooks the selected compartments at the chosen time, within the next 24 hours.")
+                    .font(.vestelCaption)
+                    .foregroundStyle(Color.fg2)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 12)
+
+                DatePicker("", selection: $time, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .padding(.top, 16)
+
+                Spacer()
+
+                VBtn(title: "Schedule", systemImage: "hourglass") {
+                    let fire = store.scheduleWithin24h(at: time)
+                    onScheduled(confirmationText(for: fire))
+                    dismiss()
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+
+    private func confirmationText(for fire: Date) -> String {
+        let cal = Calendar.current
+        let day = cal.isDateInToday(fire) ? "Today"
+                : cal.isDateInTomorrow(fire) ? "Tomorrow"
+                : fire.formatted(.dateTime.weekday(.abbreviated))
+        return "\(day) · \(fire.formatted(.dateTime.hour().minute()))"
     }
 }
 
@@ -259,55 +279,40 @@ struct CookingActiveView: View {
     var body: some View {
         VStack(spacing: 0) {
             VTopbar()
-            ScrollView {
-                VStack(spacing: 18) {
-                    if case .active(let remaining, let total) = store.cookingState {
-                        let elapsed = total - remaining
-                        let progress = total > 0 ? Double(elapsed) / Double(total) : 0
-                        let phases = buildRingPhases(mode: store.cookMode,
-                                                     levels: store.donenessLevels,
-                                                     eggs: store.selectedEggs)
-                        let display = phaseTimerDisplay(remaining: remaining, total: total,
-                                                        mode: store.cookMode,
-                                                        levels: store.donenessLevels,
-                                                        eggs: store.selectedEggs)
-                        let completedSections = Set((0..<3).filter { i in
-                            guard store.selectedEggs.contains(i*2) || store.selectedEggs.contains(i*2+1) else { return false }
-                            let lvl = store.cookMode == .bulk ? store.donenessLevels[0] : store.donenessLevels[i]
-                            return elapsed >= phaseDonenessSeconds(lvl)
-                        })
-                        VRing(big: display.big, sub: display.sub, progress: progress, phases: phases)
-                            .padding(.top, 8)
-                        VSeg(options: ["Bulk", "Separate"],
-                             active: .constant(store.cookMode == .bulk ? "Bulk" : "Separate"))
-                            .disabled(true)
-                            .padding(.horizontal, 24)
-                        VEggGrid(selected: .constant(store.selectedEggs),
-                                 interactive: false,
-                                 completedSections: completedSections)
-                            .padding(.horizontal, 24)
-                        if store.cookMode == .bulk {
-                            VDonenessBulk(active: .constant(store.donenessLevels[0]),
-                                          caption: "All blocks · same level")
-                                .disabled(true)
-                                .padding(.horizontal, 24)
-                        } else {
-                            VDonenessSeparate(levels: .constant(store.donenessLevels),
-                                              selectedEggs: store.selectedEggs,
-                                              completedSections: completedSections,
-                                              caption: "Per block · own level")
-                                .disabled(true)
-                                .padding(.horizontal, 24)
-                        }
-                    } else {
-                        EmptyView()
-                    }
-                }
-                .padding(.bottom, 20)
+
+            Spacer()
+
+            // Centered, enlarged ring — the compartment picker fades out while cooking
+            if case .active(let remaining, let total) = store.cookingState {
+                let progress = total > 0 ? Double(total - remaining) / Double(total) : 0
+                let phases = buildRingPhases(mode: store.cookMode,
+                                             levels: store.donenessLevels,
+                                             eggs: store.selectedEggs)
+                let display = phaseTimerDisplay(remaining: remaining, total: total,
+                                                mode: store.cookMode,
+                                                levels: store.donenessLevels,
+                                                eggs: store.selectedEggs)
+                VRing(big: display.big,
+                      sub: store.isPaused ? "paused" : display.sub,
+                      progress: progress,
+                      phases: phases,
+                      radius: 120)
+                    .transition(.scale.combined(with: .opacity))
             }
-            VBtn(title: "Cancel Cook", kind: .dangerOutline) { store.cancelCook() }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
+
+            Spacer()
+
+            VStack(spacing: 12) {
+                VBtn(title: store.isPaused ? "Resume" : "Pause",
+                     systemImage: store.isPaused ? "play.fill" : "pause.fill") {
+                    if store.isPaused { store.resumeCook() } else { store.pauseCook() }
+                }
+                VBtn(title: "Stop", systemImage: "stop.fill") {
+                    store.cancelCook()
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 40)
         }
         .background(Color.bgApp.ignoresSafeArea())
     }

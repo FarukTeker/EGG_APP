@@ -28,6 +28,7 @@ final class AppStore: ObservableObject {
     @Published var donenessLevels: [String] = ["Medium", "Medium", "Medium"]
     @Published var waterLevel: Double = 0.72   // 0..1 — tank fill fraction
     @Published var cookingState: CookingState = .idle
+    @Published var isPaused: Bool = false
     private var cookTimer: Timer?
     private var remainingSeconds: Int = 0
     private var totalSeconds: Int = 0
@@ -89,8 +90,13 @@ final class AppStore: ObservableObject {
         let baseSeconds = donenessSeconds()
         totalSeconds = baseSeconds
         remainingSeconds = baseSeconds
+        isPaused = false
         cookingState = .active(remainingSeconds: remainingSeconds, totalSeconds: totalSeconds)
+        startTimer()
+    }
 
+    private func startTimer() {
+        cookTimer?.invalidate()
         cookTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.tickCookTimer()
@@ -98,9 +104,23 @@ final class AppStore: ObservableObject {
         }
     }
 
+    func pauseCook() {
+        guard cookingState.isActive, !isPaused else { return }
+        cookTimer?.invalidate()
+        cookTimer = nil
+        isPaused = true
+    }
+
+    func resumeCook() {
+        guard isPaused else { return }
+        isPaused = false
+        startTimer()
+    }
+
     func cancelCook() {
         cookTimer?.invalidate()
         cookTimer = nil
+        isPaused = false
 
         let session = CookSession(
             mode: cookMode,
@@ -144,6 +164,7 @@ final class AppStore: ObservableObject {
             if let device = activeDevice {
                 history.insert(HistoryEntry(session: session, deviceName: device.name), at: 0)
             }
+            isPaused = false
             cookingState = .complete(session: session)
             return
         }
@@ -170,6 +191,25 @@ final class AppStore: ObservableObject {
     // MARK: - Scheduled Cooks
 
     func addSchedule(_ s: ScheduledCook) { scheduledCooks.insert(s, at: 0) }
+
+    /// Schedules the current compartment selection + doneness as a one-time cook at the next
+    /// occurrence of the chosen time-of-day — always within the next 24 hours (no long-term repeat).
+    /// Returns the resolved fire date so the UI can confirm "today 7:30 AM" / "tomorrow 6:15 AM".
+    @discardableResult
+    func scheduleWithin24h(at time: Date) -> Date {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.hour, .minute], from: time)
+        let fire = cal.nextDate(after: Date(), matching: comps, matchingPolicy: .nextTime) ?? Date()
+        let preset = EggPreset(name: "Scheduled cook",
+                               mode: cookMode,
+                               selectedEggs: Array(selectedEggs).sorted(),
+                               donenessLevels: donenessLevels)
+        addSchedule(ScheduledCook(preset: preset,
+                                  scheduleType: .oneTime,
+                                  fireTime: fire,
+                                  oneTimeDate: fire))
+        return fire
+    }
 
     func updateSchedule(_ s: ScheduledCook) {
         if let i = scheduledCooks.firstIndex(where: { $0.id == s.id }) { scheduledCooks[i] = s }

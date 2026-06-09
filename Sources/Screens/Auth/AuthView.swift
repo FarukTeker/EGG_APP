@@ -35,26 +35,27 @@ struct LoginView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // Logo
-                VStack(spacing: 8) {
-                    Circle()
-                        .fill(Color.bgSurface1)
-                        .frame(width: 64, height: 64)
-                        .overlay(
-                            Image(systemName: "person")
-                                .font(.system(size: 28))
-                                .foregroundStyle(Color.fg2)
-                        )
-                    Text("vestel")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.brandYellow)
-                }
-                .padding(.top, 60)
-                .padding(.bottom, 40)
+                // Avatar — large filled accent circle with a white person glyph (Figma "Sign in")
+                Circle()
+                    .fill(Color.brandYellow)
+                    .frame(width: 96, height: 96)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.white)
+                    )
+                    .padding(.top, 72)
+                    .padding(.bottom, 48)
 
                 VStack(spacing: 12) {
                     VInput(placeholder: "e-mail", text: $email)
                     VInput(placeholder: "Password", text: $password, isSecure: true)
+
+                    // Forgot-password link sits directly under the password field, right-aligned
+                    HStack {
+                        Spacer()
+                        VLinkBtn(title: "Forgot your password?") { goForgot() }
+                    }
                 }
                 .padding(.horizontal, 24)
 
@@ -72,7 +73,6 @@ struct LoginView: View {
                         }
                     }
                     VBtn(title: "Register", kind: .secondary) { goRegister() }
-                    VLinkBtn(title: "Forgot password?") { goForgot() }
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 28)

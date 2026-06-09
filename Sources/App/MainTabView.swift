@@ -51,11 +51,14 @@ private struct CookTabView: View {
                 WifiLostView(remainingSeconds: remaining)
             case .active:
                 CookingActiveView()
+                    .transition(.opacity)
             case .complete(let session):
                 CookingCompleteView(session: session)
             case .idle:
                 MainCookView()
+                    .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.4), value: store.cookingState.isActive)
     }
 }

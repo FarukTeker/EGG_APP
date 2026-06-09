@@ -70,18 +70,23 @@ struct VBtn: View {
     enum Kind { case primary, secondary, ghost, dangerOutline }
     let title: String
     var kind: Kind = .primary
+    var systemImage: String? = nil
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.vestelButton)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(background)
-                .foregroundStyle(foreground)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(borderColor, lineWidth: borderWidth))
+            HStack(spacing: 8) {
+                if let systemImage {
+                    Image(systemName: systemImage).font(.system(size: 14, weight: .semibold))
+                }
+                Text(title).font(.vestelButton)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(background)
+            .foregroundStyle(foreground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(borderColor, lineWidth: borderWidth))
         }
     }
 
@@ -136,24 +141,36 @@ struct VInput: View {
     let placeholder: String
     @Binding var text: String
     var isSecure: Bool = false
+    @State private var reveal = false
 
     var body: some View {
-        Group {
+        HStack(spacing: 10) {
+            Group {
+                if isSecure && !reveal {
+                    SecureField(placeholder, text: $text)
+                } else {
+                    TextField(placeholder, text: $text)
+                        .autocorrectionDisabled()
+                }
+            }
+            .font(.vestelBody)
+            .foregroundStyle(Color.fg1)
+            .textInputAutocapitalization(.never)
+
+            // Show/hide toggle — matches the eye icon on every password field in Figma
             if isSecure {
-                SecureField(placeholder, text: $text)
-            } else {
-                TextField(placeholder, text: $text)
-                    .autocorrectionDisabled()
+                Button { reveal.toggle() } label: {
+                    Image(systemName: reveal ? "eye.slash" : "eye")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.fg3)
+                }
             }
         }
-        .font(.vestelBody)
-        .foregroundStyle(Color.fg1)
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
         .background(Color.bgSurface2)
         .clipShape(Capsule())
         .tint(.brandYellow)
-        .textInputAutocapitalization(.never)
     }
 }
 
@@ -201,12 +218,12 @@ struct VTopbar: View {
             } else if showAvatar {
                 Button { showProfile = true } label: {
                     Circle()
-                        .fill(Color.bgSurface2)
+                        .fill(Color.brandYellow)
                         .frame(width: 32, height: 32)
                         .overlay(
-                            Image(systemName: "person")
+                            Image(systemName: "person.fill")
                                 .font(.system(size: 14))
-                                .foregroundStyle(Color.fg2)
+                                .foregroundStyle(.white)
                         )
                 }
             } else {
@@ -274,8 +291,7 @@ struct VRing: View {
     let sub: String
     var progress: Double = 0
     var phases: [RingPhase] = []
-
-    private let radius: CGFloat = 60
+    var radius: CGFloat = 60
 
     var body: some View {
         ZStack {
@@ -349,12 +365,21 @@ struct VEggGrid: View {
     @Binding var selected: Set<Int>
     var interactive: Bool = true
     var completedSections: Set<Int> = []
+    /// When provided, each active section's label becomes a Soft/Medium/Hard dropdown.
+    /// In bulk mode picking a level applies it to all sections.
+    var doneness: Binding<[String]>? = nil
+    var bulkMode: Bool = false
 
     let sections = ["A", "B", "C"]
+    private let options = ["Soft", "Medium", "Hard"]
+
+    private func sectionHasEgg(_ i: Int) -> Bool {
+        selected.contains(i * 2) || selected.contains(i * 2 + 1)
+    }
 
     var body: some View {
         VStack(spacing: 6) {
-            HStack(spacing: 10) {
+            HStack(spacing: 6) {
                 ForEach(0..<3) { sectionIdx in
                     EggSlot(
                         topSelected: selected.contains(sectionIdx * 2),
@@ -370,16 +395,57 @@ struct VEggGrid: View {
                     }
                 }
             }
-            HStack(spacing: 10) {
+            HStack(spacing: 6) {
                 ForEach(0..<3) { i in
-                    Text(sections[i])
-                        .font(.vestelCaption)
-                        .foregroundStyle(completedSections.contains(i) ? Color.success : Color.fg3)
-                        .frame(maxWidth: .infinity)
+                    sectionLabel(i)
                 }
             }
         }
         .padding(.horizontal, 4)
+    }
+
+    @ViewBuilder
+    private func sectionLabel(_ i: Int) -> some View {
+        let done = completedSections.contains(i)
+        let letterColor = done ? Color.success : Color.fg3
+
+        if let doneness, interactive, sectionHasEgg(i) {
+            // Hardness dropdown — tapping the compartment label picks Soft/Medium/Hard
+            Menu {
+                ForEach(options, id: \.self) { opt in
+                    Button(opt) {
+                        if bulkMode { doneness.wrappedValue = [opt, opt, opt] }
+                        else { doneness.wrappedValue[i] = opt }
+                    }
+                }
+            } label: {
+                VStack(spacing: 1) {
+                    Text(sections[i]).font(.vestelCaption).foregroundStyle(letterColor)
+                    HStack(spacing: 2) {
+                        Text(doneness.wrappedValue[i])
+                            .font(.vestelLabel)
+                            .foregroundStyle(done ? Color.success : Color.fg1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(Color.fg3)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Color.bgSurface1)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        } else {
+            // Read-only / empty section — plain letter, with level beneath when known
+            VStack(spacing: 1) {
+                Text(sections[i]).font(.vestelCaption).foregroundStyle(letterColor)
+                if let doneness, sectionHasEgg(i) {
+                    Text(doneness.wrappedValue[i]).font(.vestelLabel).foregroundStyle(Color.fg3)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+        }
     }
 }
 
@@ -458,20 +524,22 @@ struct VDonenessBulk: View {
     var body: some View {
         VStack(spacing: 8) {
             Text(caption).font(.vestelCaption).foregroundStyle(Color.fg3)
-            HStack(spacing: 8) {
+            Menu {
                 ForEach(options, id: \.self) { opt in
-                    Button {
-                        withAnimation { active = opt }
-                    } label: {
-                        Text(opt)
-                            .font(.vestelLabel)
-                            .foregroundStyle(active == opt ? .white : Color.fg2)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(active == opt ? Color.brandYellow : Color.bgSurface2)
-                            .clipShape(Capsule())
-                    }
+                    Button(opt) { active = opt }
                 }
+            } label: {
+                HStack {
+                    Text(active).font(.vestelLabel).foregroundStyle(Color.fg1)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.fg3)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.bgSurface2)
+                .clipShape(Capsule())
             }
         }
     }
