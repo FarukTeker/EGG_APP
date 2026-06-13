@@ -13,12 +13,27 @@ import java.util.concurrent.TimeUnit
 class ApiClient(private val tokenProvider: () -> String?) {
 
     // 10.0.2.2 = host machine from Android emulator
-    private var baseUrl = "http://10.0.2.2:8080/api/v1"
+    private val host = "http://10.0.2.2:8080"
+    private var baseUrl = "$host/api/v1"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
+
+    // Short-timeout client so an unreachable backend is detected quickly.
+    private val healthClient = client.newBuilder()
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(2, TimeUnit.SECONDS)
+        .build()
+
+    /** Pings GET /api/health; returns true only if the backend answers OK. */
+    suspend fun isBackendUp(): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder().url("$host/api/health").get().build()
+            healthClient.newCall(request).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
+    }
 
     private val json = Json {
         ignoreUnknownKeys = true

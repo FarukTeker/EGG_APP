@@ -97,39 +97,16 @@ class WatchViewModel(application: Application) : AndroidViewModel(application) {
      * straight into the app with sample data so it always works offline.
      */
     fun mockSync() {
-        val mockDevice = DeviceResponse(
-            id = "mock-device",
-            name = "Kitchen",
-            modelCode = "DIVISE-1",
-            state = "active",
-            isActive = true
-        )
-        val mockPresets = listOf(
-            PresetResponse(
-                id = "mock-preset-1",
-                name = "Breakfast",
-                mode = "separate",
-                selectedSections = listOf(0, 1, 2),
-                donenessLevels = listOf("Hard", "Medium", "Soft")
-            ),
-            PresetResponse(
-                id = "mock-preset-2",
-                name = "Soft trio",
-                mode = "separate",
-                selectedSections = listOf(0, 1, 2),
-                donenessLevels = listOf("Soft", "Soft", "Soft")
-            )
-        )
         _state.update {
             it.copy(
                 isLoggedIn = true,
                 isLoading = false,
                 error = null,
                 email = "demo@vestel.com",
-                devices = listOf(mockDevice),
-                activeDevice = mockDevice,
+                devices = listOf(MOCK_DEVICE),
+                activeDevice = MOCK_DEVICE,
                 isPaired = true,
-                presets = mockPresets
+                presets = MOCK_PRESETS
             )
         }
     }
@@ -164,21 +141,30 @@ class WatchViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startPairing() {
-        _state.update { it.copy(isPairing = true) }
+        _state.update { it.copy(isPairing = true, error = null) }
         viewModelScope.launch {
-            delay(2000)
-            api.getDevices().onSuccess { devices ->
-                val active = devices.firstOrNull { it.state == "active" } ?: devices.firstOrNull()
-                _state.update {
-                    it.copy(
-                        isPairing = false,
-                        isPaired = active != null,
-                        devices = devices,
-                        activeDevice = active
-                    )
-                }
-            }.onFailure {
-                _state.update { it.copy(isPairing = false, error = "Could not find device") }
+            delay(2000) // search animation
+            // Prefer a real cooker when the backend is up and one is registered
+            // on the account; otherwise fall back to the mock cooker so pairing
+            // always succeeds (the demo backend has no device provisioned).
+            val device = if (api.isBackendUp()) {
+                api.getDevices().getOrNull()
+                    ?.let { devices -> devices.firstOrNull { it.state == "active" } ?: devices.firstOrNull() }
+                    ?: MOCK_DEVICE
+            } else {
+                MOCK_DEVICE
+            }
+            val usingMock = device === MOCK_DEVICE
+            _state.update {
+                it.copy(
+                    isPairing = false,
+                    isPaired = true,
+                    devices = listOf(device),
+                    activeDevice = device,
+                    // The mock cooker ships with sample presets; keep any real
+                    // presets already loaded from the backend untouched.
+                    presets = if (usingMock && it.presets.isEmpty()) MOCK_PRESETS else it.presets
+                )
             }
         }
     }
@@ -299,5 +285,69 @@ class WatchViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    companion object {
+        /** Stand-in cooker used by the demo sync and the pairing search. */
+        private val MOCK_DEVICE = DeviceResponse(
+            id = "mock-device",
+            name = "Kitchen",
+            modelCode = "DIVISE-1",
+            state = "active",
+            isActive = true
+        )
+
+        /** Sample presets that ship with the mock cooker. */
+        private val MOCK_PRESETS = listOf(
+            PresetResponse(
+                id = "mock-preset-1",
+                name = "Breakfast",
+                mode = "separate",
+                selectedSections = listOf(0, 1, 2),
+                donenessLevels = listOf("Hard", "Medium", "Soft")
+            ),
+            PresetResponse(
+                id = "mock-preset-2",
+                name = "Soft trio",
+                mode = "separate",
+                selectedSections = listOf(0, 1, 2),
+                donenessLevels = listOf("Soft", "Soft", "Soft")
+            ),
+            PresetResponse(
+                id = "mock-preset-3",
+                name = "Medium trio",
+                mode = "separate",
+                selectedSections = listOf(0, 1, 2),
+                donenessLevels = listOf("Medium", "Medium", "Medium")
+            ),
+            PresetResponse(
+                id = "mock-preset-4",
+                name = "Hard trio",
+                mode = "separate",
+                selectedSections = listOf(0, 1, 2),
+                donenessLevels = listOf("Hard", "Hard", "Hard")
+            ),
+            PresetResponse(
+                id = "mock-preset-5",
+                name = "Brunch",
+                mode = "separate",
+                selectedSections = listOf(0, 1, 2),
+                donenessLevels = listOf("Soft", "Medium", "Medium")
+            ),
+            PresetResponse(
+                id = "mock-preset-6",
+                name = "Quick pair",
+                mode = "separate",
+                selectedSections = listOf(0, 1),
+                donenessLevels = listOf("Soft", "Soft")
+            ),
+            PresetResponse(
+                id = "mock-preset-7",
+                name = "Single soft",
+                mode = "separate",
+                selectedSections = listOf(0),
+                donenessLevels = listOf("Soft")
+            )
+        )
     }
 }

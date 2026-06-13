@@ -1,6 +1,7 @@
 package com.vestel.divise.watch.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.vestel.divise.watch.data.Doneness
 
 /**
  * Light / dark palette selection for the watch app.
@@ -98,4 +99,14 @@ object DiviseColors {
     val RingTrack get() = p.ringTrack
     val SurfaceDim get() = p.surfaceDim
     val Surface12 get() = p.surface12
+}
+
+/**
+ * Single source of truth for doneness colours across the app:
+ * earliest-cooking Soft is blue, Medium yellow, Hard (latest) red.
+ */
+fun donenessColor(doneness: Doneness): Color = when (doneness) {
+    Doneness.Soft -> DiviseColors.Blue
+    Doneness.Medium -> DiviseColors.Yellow
+    Doneness.Hard -> DiviseColors.Red
 }

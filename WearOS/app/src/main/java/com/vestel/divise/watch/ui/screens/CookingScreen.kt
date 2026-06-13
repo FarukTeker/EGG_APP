@@ -22,6 +22,7 @@ import androidx.wear.compose.material.Text
 import com.vestel.divise.watch.ui.components.IconButton
 import com.vestel.divise.watch.ui.components.PillButton
 import com.vestel.divise.watch.ui.components.TimerRing
+import com.vestel.divise.watch.ui.components.TimerSegment
 import com.vestel.divise.watch.ui.theme.DiviseColors
 
 @Composable
@@ -41,12 +42,16 @@ fun PreheatScreen() {
     }
 }
 
+/** A "+M:SS Type" line under the main countdown for a later-finishing egg. */
+data class CookTimeLine(val label: String, val color: Color)
+
 @Composable
 fun CookingActiveScreen(
     remaining: String,
-    subRemaining: String,
+    nextLines: List<CookTimeLine>,
     progress: Float,
     isPaused: Boolean,
+    segments: List<TimerSegment>,
     onStop: () -> Unit,
     onPauseResume: () -> Unit
 ) {
@@ -54,56 +59,61 @@ fun CookingActiveScreen(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier.size(150.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                TimerRing(
-                    progress = progress,
-                    size = 150.dp,
-                    strokeWidth = 6.dp,
-                    dim = isPaused
-                )
+        // The ring fills the watch face; time + controls live inside it.
+        TimerRing(
+            progress = progress,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(4.dp),
+            strokeWidth = 8.dp,
+            dim = isPaused,
+            segments = segments
+        )
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = remaining,
+                color = if (isPaused) DiviseColors.TextDim else DiviseColors.Text,
+                fontSize = 38.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp
+            )
+            if (isPaused) {
+                Text(
+                    text = "PAUSED",
+                    color = DiviseColors.Orange,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp
+                )
+            } else {
+                // "+M:SS Type" for each later-finishing egg, colour-coded.
+                nextLines.forEach { line ->
                     Text(
-                        text = remaining,
-                        color = if (isPaused) DiviseColors.TextDim else DiviseColors.Text,
-                        fontSize = 30.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
+                        text = line.label,
+                        color = line.color,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
-                    if (isPaused) {
-                        Text(
-                            text = "PAUSED",
-                            color = DiviseColors.Orange,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.6.sp
-                        )
-                    } else {
-                        Text(
-                            text = subRemaining,
-                            color = DiviseColors.TextDim,
-                            fontSize = 13.sp
-                        )
-                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 // Stop button
                 IconButton(
                     onClick = onStop,
-                    size = 36.dp,
+                    size = 38.dp,
                     color = if (isPaused) DiviseColors.Surface12 else DiviseColors.Red
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .size(13.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(Color.White)
                     )
@@ -112,26 +122,26 @@ fun CookingActiveScreen(
                 // Pause/Resume button
                 IconButton(
                     onClick = onPauseResume,
-                    size = 36.dp,
+                    size = 38.dp,
                     color = DiviseColors.Red
                 ) {
                     if (isPaused) {
                         // Play icon
-                        Text("▶", color = Color.White, fontSize = 12.sp)
+                        Text("▶", color = Color.White, fontSize = 13.sp)
                     } else {
                         // Pause icon
                         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             Box(
                                 modifier = Modifier
                                     .width(4.dp)
-                                    .height(12.dp)
+                                    .height(13.dp)
                                     .clip(RoundedCornerShape(1.dp))
                                     .background(Color.White)
                             )
                             Box(
                                 modifier = Modifier
                                     .width(4.dp)
-                                    .height(12.dp)
+                                    .height(13.dp)
                                     .clip(RoundedCornerShape(1.dp))
                                     .background(Color.White)
                             )
@@ -227,19 +237,25 @@ fun DoneScreen(onDismiss: () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier.size(150.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                TimerRing(progress = 1f, size = 150.dp, dim = true)
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Done!", color = DiviseColors.Text, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
-                    Text("0:00", color = DiviseColors.TextDim, fontSize = 12.sp)
-                }
-            }
+        // Same full-face ring as the cooking screen; content + button live inside.
+        TimerRing(
+            progress = 1f,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(4.dp),
+            strokeWidth = 8.dp,
+            dim = true
+        )
 
-            Spacer(modifier = Modifier.height(10.dp))
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Done!", color = DiviseColors.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+            Text("0:00", color = DiviseColors.TextDim, fontSize = 13.sp)
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             PillButton(text = "Dismiss", onClick = onDismiss, color = DiviseColors.Red)
         }

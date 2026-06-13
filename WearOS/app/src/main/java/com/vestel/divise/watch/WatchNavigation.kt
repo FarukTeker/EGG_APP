@@ -6,8 +6,61 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+import com.vestel.divise.watch.data.CookConfig
 import com.vestel.divise.watch.data.Doneness
+import com.vestel.divise.watch.ui.components.TimerSegment
 import com.vestel.divise.watch.ui.screens.*
+import com.vestel.divise.watch.ui.theme.donenessColor
+
+private fun fmtTime(seconds: Int): String {
+    val s = seconds.coerceAtLeast(0)
+    return "${s / 60}:%02d".format(s % 60)
+}
+
+/** Distinct active donenesses, ordered soonest-finishing first. */
+private fun activeDonenessesSorted(cookConfig: CookConfig): List<Doneness> =
+    cookConfig.slots.filter { it.active }
+        .map { it.doneness }
+        .distinct()
+        .sortedBy { it.seconds }
+
+/**
+ * Splits the cook into coloured bands, one per distinct finish time, ordered
+ * soonest-first from cook start. Each band is coloured by the doneness that
+ * completes at its end, so the timer marker passing a colour edge == egg done.
+ */
+private fun cookSegments(cookConfig: CookConfig, totalSeconds: Int): List<TimerSegment> {
+    val total = (totalSeconds.takeIf { it > 0 } ?: cookConfig.totalSeconds)
+    if (total <= 0) return emptyList()
+    var prev = 0
+    return activeDonenessesSorted(cookConfig).map { d ->
+        val frac = (d.seconds - prev).toFloat() / total
+        prev = d.seconds
+        TimerSegment(frac, donenessColor(d))
+    }
+}
+
+/**
+ * The "+M:SS Type" lines shown under the main countdown: for every doneness
+ * that finishes after the current soonest one, how much longer it needs.
+ */
+private fun nextFinishLines(cookConfig: CookConfig, totalSeconds: Int, remainingSeconds: Int): List<CookTimeLine> {
+    val total = totalSeconds.takeIf { it > 0 } ?: return emptyList()
+    val elapsed = total - remainingSeconds
+    val sorted = activeDonenessesSorted(cookConfig)
+    val current = sorted.firstOrNull { it.seconds - elapsed > 0 } ?: return emptyList()
+    return sorted.filter { it.seconds > current.seconds }
+        .map { d -> CookTimeLine("+${fmtTime(d.seconds - current.seconds)} ${d.label}", donenessColor(d)) }
+}
+
+/** Remaining time until the soonest-finishing egg is done (the big countdown). */
+private fun earliestRemaining(cookConfig: CookConfig, totalSeconds: Int, remainingSeconds: Int): String {
+    val total = totalSeconds.takeIf { it > 0 } ?: return fmtTime(remainingSeconds)
+    val elapsed = total - remainingSeconds
+    val sorted = activeDonenessesSorted(cookConfig)
+    val current = sorted.firstOrNull { it.seconds - elapsed > 0 }
+    return fmtTime((current?.seconds ?: 0) - elapsed)
+}
 
 object Routes {
     const val SPLASH = "splash"
@@ -83,6 +136,14 @@ fun WatchApp(viewModel: WatchViewModel) {
         }
 
         composable(Routes.PAIRING) {
+            // Once a (mock) cooker is paired, advance to the Connected screen.
+            LaunchedEffect(state.isPaired) {
+                if (state.isPaired) {
+                    navController.navigate(Routes.CONNECTED) {
+                        popUpTo(Routes.PAIRING) { inclusive = true }
+                    }
+                }
+            }
             PairingScreen(
                 isPairing = state.isPairing,
                 onStartPairing = { viewModel.startPairing() }
@@ -154,10 +215,11 @@ fun WatchApp(viewModel: WatchViewModel) {
 
         composable(Routes.COOKING) {
             CookingActiveScreen(
-                remaining = state.remainingFormatted,
-                subRemaining = state.subRemainingFormatted,
+                remaining = earliestRemaining(state.cookConfig, state.totalSeconds, state.remainingSeconds),
+                nextLines = nextFinishLines(state.cookConfig, state.totalSeconds, state.remainingSeconds),
                 progress = state.progress,
                 isPaused = state.isPaused,
+                segments = cookSegments(state.cookConfig, state.totalSeconds),
                 onStop = { navController.navigate(Routes.CANCEL_CONFIRM) },
                 onPauseResume = {
                     if (state.isPaused) viewModel.resumeCook() else viewModel.pauseCook()

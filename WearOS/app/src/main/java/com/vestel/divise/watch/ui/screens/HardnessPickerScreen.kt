@@ -36,22 +36,22 @@ fun HardnessPickerScreen(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
-                    .width(180.dp)
-                    .height(150.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(1.5.dp, DiviseColors.Surface12, RoundedCornerShape(16.dp)),
+                    .width(140.dp)
+                    .height(96.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(1.5.dp, DiviseColors.Surface12, RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // Previous option, peeking past the top edge
+                // Previous option, peeking near the top edge
                 if (selectedIdx > 0) {
                     Text(
                         text = options[selectedIdx - 1].label,
                         color = DiviseColors.TextMute,
-                        fontSize = 22.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .offset(y = (-10).dp)
+                            .offset(y = 6.dp)
                             .clickable {
                                 selected = options[selectedIdx - 1]
                                 onSelect(selected)
@@ -63,20 +63,20 @@ fun HardnessPickerScreen(
                 Text(
                     text = selected.label,
                     color = DiviseColors.Text,
-                    fontSize = 32.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.SemiBold
                 )
 
-                // Next option, peeking past the bottom edge
+                // Next option, peeking near the bottom edge
                 if (selectedIdx < options.size - 1) {
                     Text(
                         text = options[selectedIdx + 1].label,
                         color = DiviseColors.TextMute,
-                        fontSize = 22.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .offset(y = 10.dp)
+                            .offset(y = (-6).dp)
                             .clickable {
                                 selected = options[selectedIdx + 1]
                                 onSelect(selected)
@@ -85,7 +85,7 @@ fun HardnessPickerScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             PillButton(
                 text = if (slotIndex == totalSlots - 1) "Done" else "Next",
