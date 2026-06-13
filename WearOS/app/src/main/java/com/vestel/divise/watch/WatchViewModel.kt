@@ -92,6 +92,48 @@ class WatchViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Mock "sync with phone" flow for demos. Skips the real backend and drops
+     * straight into the app with sample data so it always works offline.
+     */
+    fun mockSync() {
+        val mockDevice = DeviceResponse(
+            id = "mock-device",
+            name = "Kitchen",
+            modelCode = "DIVISE-1",
+            state = "active",
+            isActive = true
+        )
+        val mockPresets = listOf(
+            PresetResponse(
+                id = "mock-preset-1",
+                name = "Breakfast",
+                mode = "separate",
+                selectedSections = listOf(0, 1, 2),
+                donenessLevels = listOf("Hard", "Medium", "Soft")
+            ),
+            PresetResponse(
+                id = "mock-preset-2",
+                name = "Soft trio",
+                mode = "separate",
+                selectedSections = listOf(0, 1, 2),
+                donenessLevels = listOf("Soft", "Soft", "Soft")
+            )
+        )
+        _state.update {
+            it.copy(
+                isLoggedIn = true,
+                isLoading = false,
+                error = null,
+                email = "demo@vestel.com",
+                devices = listOf(mockDevice),
+                activeDevice = mockDevice,
+                isPaired = true,
+                presets = mockPresets
+            )
+        }
+    }
+
     fun logout() {
         viewModelScope.launch {
             tokenStore.clear()

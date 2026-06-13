@@ -1,13 +1,19 @@
 package com.vestel.divise.watch.ui.screens
 
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -200,6 +206,23 @@ fun CancelConfirmScreen(
 
 @Composable
 fun DoneScreen(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+
+    // Buzz repeatedly while the Done screen is shown; stops when it leaves
+    // composition (i.e. when the user taps Dismiss).
+    DisposableEffect(Unit) {
+        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Pattern repeats: wait 0ms, buzz 500ms, pause 800ms (index 0 = repeat point)
+            val effect = VibrationEffect.createWaveform(longArrayOf(0, 500, 800), 0)
+            vibrator?.vibrate(effect)
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator?.vibrate(longArrayOf(0, 500, 800), 0)
+        }
+        onDispose { vibrator?.cancel() }
+    }
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center

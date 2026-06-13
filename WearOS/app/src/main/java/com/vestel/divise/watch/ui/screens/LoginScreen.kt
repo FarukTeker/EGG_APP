@@ -22,10 +22,18 @@ import com.vestel.divise.watch.ui.theme.DiviseColors
 fun LoginScreen(
     isLoading: Boolean,
     error: String?,
-    onLogin: (String, String) -> Unit
+    onLogin: (String, String) -> Unit,
+    onSync: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var syncing by remember { mutableStateOf(false) }
+
+    // Mock "sync with phone" flow: show the loading screen for ~2s, then open the app.
+    if (syncing) {
+        SplashScreen(onTimeout = onSync)
+        return
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -105,6 +113,14 @@ fun LoginScreen(
             PillButton(
                 text = if (isLoading) "..." else "Log in",
                 onClick = { if (!isLoading) onLogin(email, password) }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            PillButton(
+                text = "Sync with phone",
+                onClick = { syncing = true },
+                color = DiviseColors.SurfaceDim
             )
         }
     }

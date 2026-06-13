@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,78 +34,58 @@ fun HardnessPickerScreen(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "SLOT ${slotIndex + 1} OF $totalSlots",
-                color = DiviseColors.TextDim,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.3.sp
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
             Box(
                 modifier = Modifier
-                    .width(160.dp)
-                    .height(110.dp)
-                    .border(1.5.dp, DiviseColors.Surface12, RoundedCornerShape(14.dp)),
+                    .width(180.dp)
+                    .height(150.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(1.5.dp, DiviseColors.Surface12, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // Previous option
-                    if (selectedIdx > 0) {
-                        Text(
-                            text = options[selectedIdx - 1].label,
-                            color = DiviseColors.TextMute,
-                            fontSize = 13.sp,
-                            modifier = Modifier.clickable {
+                // Previous option, peeking past the top edge
+                if (selectedIdx > 0) {
+                    Text(
+                        text = options[selectedIdx - 1].label,
+                        color = DiviseColors.TextMute,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = (-10).dp)
+                            .clickable {
                                 selected = options[selectedIdx - 1]
                                 onSelect(selected)
                             }
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Current
-                    Text(
-                        text = selected.label,
-                        color = DiviseColors.Text,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.SemiBold
                     )
+                }
+
+                // Selected option, centered
+                Text(
+                    text = selected.label,
+                    color = DiviseColors.Text,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                // Next option, peeking past the bottom edge
+                if (selectedIdx < options.size - 1) {
                     Text(
-                        text = selected.minutes,
-                        color = DiviseColors.TextDim,
-                        fontSize = 11.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Next option
-                    if (selectedIdx < options.size - 1) {
-                        Text(
-                            text = options[selectedIdx + 1].label,
-                            color = DiviseColors.TextMute,
-                            fontSize = 13.sp,
-                            modifier = Modifier.clickable {
+                        text = options[selectedIdx + 1].label,
+                        color = DiviseColors.TextMute,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .offset(y = 10.dp)
+                            .clickable {
                                 selected = options[selectedIdx + 1]
                                 onSelect(selected)
                             }
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             PillButton(
                 text = if (slotIndex == totalSlots - 1) "Done" else "Next",

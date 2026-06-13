@@ -74,7 +74,11 @@ fun WatchApp(viewModel: WatchViewModel) {
             LoginScreen(
                 isLoading = state.isLoading,
                 error = state.error,
-                onLogin = { email, password -> viewModel.login(email, password) }
+                onLogin = { email, password -> viewModel.login(email, password) },
+                onSync = {
+                    viewModel.mockSync()
+                    navController.navigate(Routes.PRESETS) { popUpTo(0) { inclusive = true } }
+                }
             )
         }
 
