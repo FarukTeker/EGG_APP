@@ -79,7 +79,9 @@ fun CookerSlot(
         Doneness.Soft -> DiviseColors.Yellow
     }
 
-    val eggColor = if (active) Color.White.copy(alpha = 0.78f) else Color.White.copy(alpha = 0.1f)
+    // Egg dots sit on a neutral surface, so they track the theme's text color
+    // (white in dark, near-black in light) rather than a hardcoded white.
+    val eggColor = if (active) DiviseColors.Text.copy(alpha = 0.78f) else DiviseColors.Text.copy(alpha = 0.1f)
 
     Column(
         modifier = modifier
